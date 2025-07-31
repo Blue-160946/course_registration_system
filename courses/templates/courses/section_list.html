@@ -1,0 +1,132 @@
+{% extends 'core/base.html' %}
+{% block title %}จัดการกลุ่มเรียน - {{ course.code }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-2" style="color: #fd7e14;">
+                <i class="bi bi-people-fill me-2"></i>จัดการกลุ่มเรียน
+            </h2>
+            <h4 class="text-muted mb-0">{{ course.name }} ({{ course.code }})</h4>
+        </div>
+        <a href="{% url 'courses:section-add' course.pk %}" class="btn btn-orange">
+            <i class="bi bi-plus-circle me-1"></i>เพิ่มกลุ่มเรียนใหม่
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0" style="border-top: 3px solid #fd7e14;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background-color: #fff8f0;">
+                        <tr>
+                            <th class="ps-4" style="color: #fd7e14;">กลุ่มเรียน</th>
+                            <th style="color: #fd7e14;">ภาคเรียน</th>
+                            <th style="color: #fd7e14;">วัน-เวลาเรียน</th>
+                            <th style="color: #fd7e14;">อาจารย์ผู้สอน</th>
+                            <th style="color: #fd7e14;">ห้องเรียน</th>
+                            <th class="text-end pe-4" style="color: #fd7e14;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for section in sections %}
+                        <tr>
+                            <td class="ps-4 fw-bold">Sec {{ section.section_number }}</td>
+                            <td>{{ section.semester }}</td>
+                            <td>
+                                {% for class_time in section.class_times.all %}
+                                    <span class="badge me-2" style="background-color: #ffefe0; color: #fd7e14; border: 1px solid #fd7e14;">
+                                        {{ class_time.get_day_display }}
+                                    </span>
+                                    {{ class_time.start_time|time:"H:i" }} - {{ class_time.end_time|time:"H:i" }}
+                                    {% if not forloop.last %}<br>{% endif %}
+                                {% empty %}
+                                    - ไม่มีตารางเวลา
+                                {% endfor %}
+                            </td>
+                            <td>
+                                {% for instructor in section.instructors.all %}
+                                    {% if instructor.profile.instructor_name %}
+                                        {{ instructor.profile.instructor_name }}
+                                    {% else %}
+                                        {{ instructor.username }}
+                                    {% endif %}
+                                    {% if not forloop.last %}<br>{% endif %}
+                                {% empty %}
+                                    -
+                                {% endfor %}
+                            </td>
+                            <td>{{ section.room|default:"-" }}</td>
+                            <td class="text-end pe-4">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'courses:section-edit' section.pk %}" class="btn btn-outline-warning">
+                                        <i class="bi bi-pencil"></i> แก้ไข
+                                    </a>
+                                    <a href="{% url 'courses:section-delete' section.pk %}" class="btn btn-outline-danger">
+                                        <i class="bi bi-trash"></i> ลบ
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                <i class="bi bi-exclamation-circle fs-4 d-block mb-2" style="color: #fd7e14;"></i>
+                                ยังไม่มีกลุ่มเรียนสำหรับวิชานี้
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="d-flex justify-content-between mt-4">
+        <a href="{% url 'courses:course-list' %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> กลับไปหน้ารายการวิชา
+        </a>
+        <div class="text-muted small">
+            แสดงทั้งหมด {{ sections|length }} กลุ่มเรียน
+        </div>
+    </div>
+</div>
+
+<style>
+
+    .btn-orange {
+        background-color: #fd7e14;
+        color: white;
+        border: none;
+        transition: all 0.3s;
+    }
+    .btn-orange:hover {
+        background-color: #e67e00;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(253, 126, 20, 0.2);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(253, 126, 20, 0.05);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .btn-group-sm > .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .badge {
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+    }
+</style>
+{% endblock %}

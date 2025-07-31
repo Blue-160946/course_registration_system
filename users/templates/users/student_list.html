@@ -1,0 +1,142 @@
+{% extends 'core/base.html' %}
+{% block title %}ข้อมูลนิสิต{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0" style="color: #fd7e14;">
+            <i class="bi bi-people-fill me-2"></i>ข้อมูลนิสิต
+        </h2>
+    </div>
+
+    <!-- Student Table Card -->
+    <div class="card shadow-sm border-0" style="border-top: 3px solid #fd7e14;">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead style="background-color: #fff8f0;">
+                        <tr>
+                            <th class="ps-4" style="color: #fd7e14;">รหัสนิสิต</th>
+                            <th style="color: #fd7e14;">ชื่อ-สกุล</th>
+                            <th style="color: #fd7e14;">สาขา</th>
+                            <th style="color: #fd7e14;">สถานะ</th>
+                            <th class="text-end pe-4" style="color: #fd7e14;">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for student in students %}
+                        <tr>
+                            <td class="ps-4">{{ student.profile.student_id|default:"-" }}</td>
+                            <td class="fw-bold">{{ student.profile.student_name|default:"-" }}</td>
+                            <td>{{ student.profile.branch.name|default:"-" }}</td>
+                            <td>
+                                <span class="badge" style="background-color: {% if student.profile.student_status == 'กำลังศึกษา' %}#d4edda{% else %}#f8d7da{% endif %}; 
+                                      color: {% if student.profile.student_status == 'กำลังศึกษา' %}#155724{% else %}#721c24{% endif %};">
+                                    {{ student.profile.student_status|default:"-" }}
+                                </span>
+                            </td>
+                            <td class="text-end pe-4">
+                                <a href="{% url 'users:student-detail' student.pk %}" class="btn btn-sm btn-orange">
+                                    <i class="bi bi-eye me-1"></i> ดูรายละเอียด
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                <i class="bi bi-exclamation-circle fs-4 d-block mb-2" style="color: #fd7e14;"></i>
+                                ไม่พบข้อมูลนิสิต
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Orange Theme Styles */
+    .btn-orange {
+        background-color: #fd7e14;
+        color: white;
+        border: none;
+        transition: all 0.3s;
+    }
+    .btn-orange:hover {
+        background-color: #e67e00;
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(253, 126, 20, 0.2);
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(253, 126, 20, 0.05);
+    }
+    
+    .card {
+        border-radius: 0.5rem;
+        overflow: hidden;
+    }
+    
+    .badge {
+        padding: 0.35em 0.65em;
+        font-weight: 500;
+        border-radius: 0.25rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .table-responsive {
+            border: 0;
+        }
+        .table thead {
+            display: none;
+        }
+        .table tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid #dee2e6;
+            border-radius: 0.25rem;
+        }
+        .table td {
+            display: block;
+            text-align: right;
+            padding-left: 50%;
+            position: relative;
+        }
+        .table td::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 1rem;
+            width: 45%;
+            padding-right: 1rem;
+            font-weight: bold;
+            text-align: left;
+            color: #fd7e14;
+        }
+        .table td:last-child {
+            border-bottom: 0;
+        }
+    }
+</style>
+
+<script>
+    // Add data labels for mobile view
+    document.addEventListener('DOMContentLoaded', function() {
+        const headers = document.querySelectorAll('thead th');
+        const rows = document.querySelectorAll('tbody tr');
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach((cell, index) => {
+                if (headers[index]) {
+                    cell.setAttribute('data-label', headers[index].textContent.trim());
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

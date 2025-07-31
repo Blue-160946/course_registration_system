@@ -1,0 +1,107 @@
+{% extends 'core/base.html' %}
+
+{% block title %}ลงทะเบียนเรียน{% endblock %}
+
+{% block content %}
+  <div class="p-4 mb-4 bg-orange-gradient text-white rounded-3">
+    <div class="container-fluid py-3">
+      <h1 class="display-5 fw-bold">รายวิชาที่เปิดลงทะเบียน</h1>
+      <p class="col-md-8 fs-5">
+        {% if current_semester %}
+          สำหรับ {{ current_semester }}
+        {% else %}
+          ยังไม่มีภาคเรียนที่เปิดให้ลงทะเบียนในขณะนี้
+        {% endif %}
+      </p>
+    </div>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="container mb-4">
+    <form class="d-flex" method="GET" action="">
+      <input class="form-control me-2" type="search" placeholder="ค้นหารหัสวิชาหรือชื่อวิชา" aria-label="Search" name="q" value="{{ request.GET.q|default:'' }}"> {# เพิ่ม name="q" และ value เพื่อคงค่าค้นหาเดิม #}
+      <button class="btn btn-orange" type="submit">ค้นหา</button>
+      {% if request.GET.q %}
+        <a href="{{ request.path }}" class="btn btn-outline-secondary ms-2">ล้างการค้นหา</a>
+      {% endif %}
+    </form>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>รหัสวิชา</th>
+          <th>ชื่อวิชา</th>
+          <th>กลุ่ม</th>
+          <th>ที่ว่าง</th>
+          <th>วัน-เวลา</th>
+          <th>ห้อง</th>
+          <th>ผู้สอน</th>
+          <th>ดำเนินการ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for section in sections %}
+          <tr>
+            <td>{{ section.course.code }}</td>
+            <td>{{ section.course.name }}</td>
+            <td>{{ section.section_number }}</td>
+            <td>{{ section.available_seats }} / {{ section.capacity }}</td>
+            <td>
+              {% for class_time in section.class_times.all %}
+                <span class="badge me-2" style="background-color: #ffefe0; color: #fd7e14; border: 1px solid #fd7e14;">
+                {{ class_time.get_day_display }}
+                </span>
+                {{ class_time.start_time|time:"H:i" }} - {{ class_time.end_time|time:"H:i" }}
+                  {% if not forloop.last %}<br>{% endif %}
+                  {% empty %}
+                      - ไม่มีตารางเวลา
+              {% endfor %}
+            </td>
+            <td>{{ section.room|default:"-" }}</td>
+            <td>{% for inst in section.instructors.all %}{{ inst.profile.instructor_name }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
+            <td>
+              {% if request.user in section.students.all %}
+                <span class="badge bg-success">ลงทะเบียนแล้ว</span>
+              {% elif section.is_full %}
+                <span class="badge bg-danger">เต็ม</span>
+              {% else %}
+                <form action="{% url 'courses:enroll-section' section.pk %}" method="post">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-sm btn-orange">ลงทะเบียน</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="8" class="text-center">ยังไม่มีรายวิชาที่เปิดสอนในภาคเรียนนี้</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .bg-orange-gradient {
+        background: linear-gradient(135deg, #fd7e14, #ff9500);
+    }
+    .btn-orange {
+        background-color: #fd7e14;
+        color: white;
+        border: none;
+    }
+    .btn-orange:hover {
+        background-color: #e67e00;
+        color: white;
+    }
+</style>
+{% endblock %}

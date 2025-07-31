@@ -1,0 +1,87 @@
+{% extends 'core/base.html' %}
+
+{% block title %}ล็อกอิน{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-5 col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-orange-gradient text-white py-3">
+                    <h2 class="mb-0 text-center"><i class="bi bi-person-badge me-2"></i>ล็อกอิน</h2>
+                </div>
+                
+                <div class="card-body p-4">
+                    {# แสดงข้อความแจ้งเตือน (Error Messages) #}
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-danger d-flex align-items-center" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <div>{{ message }}</div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="mb-3">
+                            <label for="id_username" class="form-label">ชื่อผู้ใช้</label>
+                            <input type="text" name="username" class="form-control" id="id_username" 
+                                   placeholder="กรอกชื่อผู้ใช้" required>
+                            <div class="invalid-feedback">กรุณากรอกชื่อผู้ใช้</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="id_password" class="form-label">รหัสผ่าน</label>
+                            <input type="password" name="password" class="form-control" 
+                                   id="id_password" placeholder="กรอกรหัสผ่าน" required>
+                            <div class="invalid-feedback">กรุณากรอกรหัสผ่าน</div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-orange btn-lg w-100 py-2">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>ล็อกอิน
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-orange-gradient {
+        background: linear-gradient(to right, #fd7e14, #ff9500);
+    }
+    .btn-orange {
+        background-color: #fd7e14;
+        color: white;
+        border: none;
+    }
+    .btn-orange:hover {
+        background-color: #e67e00;
+        color: white;
+    }
+    .text-orange {
+        color: #fd7e14;
+    }
+</style>
+
+<script>
+    // Bootstrap validation script
+    (function() {
+        'use strict'
+        const forms = document.querySelectorAll('.needs-validation')
+        
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+</script>
+{% endblock %}

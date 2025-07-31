@@ -1,0 +1,124 @@
+{# core/templates/core/index.html #}
+
+{% extends 'core/base.html' %}
+
+{% block title %}
+  หน้าแรก - ระบบลงทะเบียนเรียน
+{% endblock %}
+
+{% block content %}
+  <style>
+    .bg-orange {
+      background-color: #fd7e14;
+    }
+    .bg-orange-gradient {
+      background: linear-gradient(to right, #fd7e14, #ff9500);
+    }
+    .text-orange {
+      color: #fd7e14;
+    }
+    .btn-orange {
+      background-color: #fd7e14;
+      color: white;
+    }
+    .btn-orange:hover {
+      background-color: #e67e00;
+      color: white;
+    }
+    .btn-outline-orange {
+      border-color: #fd7e14;
+      color: #fd7e14;
+    }
+    .btn-outline-orange:hover {
+      background-color: #fd7e14;
+      color: white;
+    }
+  </style>
+
+  {# ส่วนหัวของหน้า #}
+  <div class="p-5 mb-4 bg-orange-gradient text-white rounded-3">
+    <div class="container-fluid py-5 text-center">
+      <h1 class="display-4 fw-bold">ระบบลงทะเบียนเรียน</h1>
+      {% if current_semester %}
+        <p class="lead fs-3">
+          รายวิชาที่เปิดสอนใน <span class="badge bg-light text-orange">{{ current_semester }}</span>
+        </p>
+      {% else %}
+        <p class="lead fs-3">
+          ยังไม่มีภาคเรียนที่เปิดให้ลงทะเบียนในขณะนี้
+        </p>
+      {% endif %}
+    </div>
+  </div>
+
+  {# แสดงผล Section ที่ดึงมา #}
+  <div class="container mt-5">
+    {% if sections %}
+    <div class="row mb-4">
+      <div class="col">
+        <h2 class="fw-bold border-bottom pb-2">รายวิชาที่เปิดสอน</h2>
+      </div>
+    </div>
+    {% endif %}
+    
+    <div class="row g-4">
+      {% for section in sections %}
+        <div class="col-lg-4 col-md-6">
+          <div class="card h-100 shadow-sm border-orange">
+            <div class="card-header bg-white">
+              <h5 class="card-title mb-0 fw-bold">{{ section.course.name }}</h5><br>
+              <h6 class="card-subtitle text-muted">{{ section.course.code }} | Sec {{ section.section_number }}</h6>
+            </div>
+            <div class="card-body">
+              <ul class="list-group list-group-flush mb-3">
+                <li class="list-group-item">
+                  <i class="bi bi-clock me-2 text-orange"></i>
+                  <strong>เวลาเรียน:</strong>
+                  {% for class_time in section.class_times.all %}
+                    {{ class_time.get_day_display }} {{ class_time.start_time|time:"H:i" }} - {{ class_time.end_time|time:"H:i" }}
+                    {% if not forloop.last %}<br>{% endif %}
+                  {% empty %}
+                    - ไม่มีตารางเวลา
+                  {% endfor %}
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-building me-2 text-orange"></i>
+                  <strong>ห้อง:</strong> {{ section.room|default:"-" }}
+                </li>
+                <li class="list-group-item">
+                  <i class="bi bi-person me-2 text-orange"></i>
+                  <strong>ผู้สอน:</strong> 
+                  {% for instructor in section.instructors.all %}
+                    {% if instructor.profile.instructor_name %}
+                        {{ instructor.profile.instructor_name }}
+                    {% else %}
+                        {{ instructor.username }}
+                    {% endif %}
+                    {% if not forloop.last %}<br>{% endif %}
+                      {% empty %}
+                        -
+                    {% endfor %}
+                </li>
+              </ul>
+            </div>
+            <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center">
+              {% if section.is_full %}
+                <span class="badge bg-danger text-white">เต็มแล้ว</span>
+              {% else %}
+                <span class="badge bg-success text-white">เปิดรับอยู่ (เหลือ {{ section.available_seats }} ที่)</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% empty %}
+        <div class="col-12">
+          <div class="alert alert-warning text-center py-4">
+            <i class="bi bi-info-circle-fill fs-1 d-block mb-3 text-orange"></i>
+            <h3 class="alert-heading">ยังไม่มีรายวิชาที่เปิดสอนในภาคเรียนนี้</h3>
+            <p>กรุณาตรวจสอบอีกครั้งในภายหลัง</p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

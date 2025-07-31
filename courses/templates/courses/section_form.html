@@ -1,0 +1,147 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{% if object %}แก้ไข{% else %}เพิ่ม{% endif %}กลุ่มเรียน{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-orange-gradient text-white py-3">
+                    <h2 class="mb-0">
+                        <i class="bi {% if object %}bi-pencil-square{% else %}bi-plus-circle{% endif %} me-2"></i>
+                        {% if object %}แก้ไข{% else %}เพิ่ม{% endif %}กลุ่มเรียนสำหรับวิชา: {{ course.name }}
+                    </h2>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                        
+                        <div class="row g-3 mb-4">
+                            {% for field in form %}
+                            <div class="col-md-6">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors }}</div>{% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <hr>
+                        
+                        <h4 class="mb-3">คาบเรียน</h4>
+                        {{ formset.management_form }}
+                        
+                        <div id="class-time-formset-container">
+                            {% for time_form in formset %}
+                            <div class="row align-items-center mb-2 class-time-row">
+                                <div class="col-sm-4 mb-2">{{ time_form.day }}</div>
+                                <div class="col-sm-3 mb-2">{{ time_form.start_time }}</div>
+                                <div class="col-sm-3 mb-2">{{ time_form.end_time }}</div>
+                                <div class="col-sm-2 mb-2">
+                                    {% if time_form.instance.pk %}
+                                        
+                                        <div style="display: none;">{{ time_form.DELETE }}</div>
+                                        
+                                        <button type="button" class="btn btn-danger btn-sm delete-time-form">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                                {{ time_form.id }}
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <button type="button" id="add-time-form" class="btn btn-success btn-sm mt-2">
+                            <i class="bi bi-plus-circle"></i> เพิ่มคาบเรียน
+                        </button>
+                        
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="{% url 'courses:section-list' course.pk %}" class="btn btn-secondary px-4">ยกเลิก</a>
+                            <button type="submit" class="btn btn-orange px-4">บันทึก</button>
+                        </div>
+                    </form>
+
+                    <div id="empty-form" style="display:none;">
+                        <div class="row align-items-center mb-2 class-time-row">
+                            <div class="col-sm-4 mb-2">{{ formset.empty_form.day }}</div>
+                            <div class="col-sm-3 mb-2">{{ formset.empty_form.start_time }}</div>
+                            <div class="col-sm-3 mb-2">{{ formset.empty_form.end_time }}</div>
+                            <div class="col-sm-2 mb-2">
+                            
+                                <button type="button" class="btn btn-warning btn-sm remove-new-form">
+                                    <i class="bi bi-x-circle"></i> ลบแถว
+                                </button>
+                            </div>
+                            {{ formset.empty_form.id }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .bg-orange-gradient { background: linear-gradient(135deg, #fd7e14, #ff9500); }
+    .btn-orange { background-color: #fd7e14; color: white; border: none; }
+    .btn-orange:hover { background-color: #e67e00; color: white; }
+</style>
+
+<script>
+    // Bootstrap validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })();
+
+    // jQuery Plugins
+    $(document).ready(function() {
+        // Initialize Select2 for instructors
+        $('#id_instructors').select2({
+            theme: "bootstrap-5",
+            placeholder: "เลือกอาจารย์ผู้สอน",
+        });
+
+        // ฟังก์ชันสำหรับเพิ่มแถวใหม่
+        $('#add-time-form').click(function() {
+            var formIdx = $('#id_{{ formset.prefix }}-TOTAL_FORMS').val();
+            var newForm = $('#empty-form').html().replace(/__prefix__/g, formIdx);
+            $('#class-time-formset-container').append(newForm);
+            $('#id_{{ formset.prefix }}-TOTAL_FORMS').val(parseInt(formIdx) + 1);
+        });
+
+        // ฟังก์ชันสำหรับลบแถวที่ยังไม่ถูกบันทึก (ลบจากหน้าจอ)
+        $('#class-time-formset-container').on('click', '.remove-new-form', function() {
+            $(this).closest('.class-time-row').remove();
+            // อัปเดตจำนวนฟอร์มทั้งหมด
+            var totalForms = $('#id_{{ formset.prefix }}-TOTAL_FORMS');
+            totalForms.val(parseInt(totalForms.val()) - 1);
+        });
+
+        // ฟังก์ชันสำหรับติ๊ก checkbox DELETE ของแถวที่ถูกบันทึกแล้ว
+        $('#class-time-formset-container').on('click', '.delete-db-form', function() {
+            var row = $(this).closest('.class-time-row');
+            row.find('input[type="checkbox"][name$="-DELETE"]').prop('checked', true);
+            row.hide();
+        });
+    });
+</script>
+{% endblock %}
