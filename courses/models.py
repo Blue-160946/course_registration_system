@@ -52,7 +52,7 @@ class Room(models.Model):
         
 
 class Course(models.Model):
-    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="courses", verbose_name="ภาควิชา", null=True)
+    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="courses", verbose_name="ภาควิชา", null=True, blank=True)
     credits = models.PositiveSmallIntegerField(default=3, verbose_name="หน่วยกิต")
     is_active = models.BooleanField(default=True, verbose_name="สถานะเปิดใช้งาน")
     code = models.CharField(max_length=10, unique=True, verbose_name="รหัสวิชา")

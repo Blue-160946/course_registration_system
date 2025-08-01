@@ -34,22 +34,29 @@
                         <hr>
                         
                         <h4 class="mb-3">คาบเรียน</h4>
+                        {% if formset.non_form_errors %}<div class="alert alert-danger">{{ formset.non_form_errors }}</div>{% endif %}
                         {{ formset.management_form }}
                         
                         <div id="class-time-formset-container">
                             {% for time_form in formset %}
-                            <div class="row align-items-center mb-2 class-time-row">
-                                <div class="col-sm-4 mb-2">{{ time_form.day }}</div>
-                                <div class="col-sm-3 mb-2">{{ time_form.start_time }}</div>
-                                <div class="col-sm-3 mb-2">{{ time_form.end_time }}</div>
+                            <div class="row align-items-start mb-2 class-time-row">
+                                {# --- ส่วนที่แก้ไข: เพิ่มการแสดง Field Errors --- #}
+                                <div class="col-sm-4 mb-2">
+                                    {{ time_form.day }}
+                                    {% if time_form.day.errors %}<div class="invalid-feedback d-block">{{ time_form.day.errors }}</div>{% endif %}
+                                </div>
+                                <div class="col-sm-3 mb-2">
+                                    {{ time_form.start_time }}
+                                    {% if time_form.start_time.errors %}<div class="invalid-feedback d-block">{{ time_form.start_time.errors }}</div>{% endif %}
+                                </div>
+                                <div class="col-sm-3 mb-2">
+                                    {{ time_form.end_time }}
+                                    {% if time_form.end_time.errors %}<div class="invalid-feedback d-block">{{ time_form.end_time.errors }}</div>{% endif %}
+                                </div>
                                 <div class="col-sm-2 mb-2">
                                     {% if time_form.instance.pk %}
-                                        
+                                        <button type="button" class="btn btn-danger btn-sm delete-db-form"><i class="bi bi-trash3"></i></button>
                                         <div style="display: none;">{{ time_form.DELETE }}</div>
-                                        
-                                        <button type="button" class="btn btn-danger btn-sm delete-time-form">
-                                            <i class="bi bi-trash3"></i>
-                                        </button>
                                     {% endif %}
                                 </div>
                                 {{ time_form.id }}

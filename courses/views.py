@@ -81,21 +81,26 @@ def section_add(request, course_pk):
     course = get_object_or_404(Course, pk=course_pk)
     
     if request.method == 'POST':
-        form = SectionForm(request.POST, course=course) 
+        form = SectionForm(request.POST, course=course)
         formset = ClassTimeFormSet(request.POST)
+        
         if form.is_valid() and formset.is_valid():
-            # บันทึก Section หลักก่อนเพื่อเอา pk
-            section = form.save(commit=False)
-            section.course = course
-            section.save()
+            # --- เพิ่ม Logic ตรวจสอบซ้ำที่นี่ ---
+            section_number = form.cleaned_data.get("section_number")
+            semester = form.cleaned_data.get("semester")
             
-            # บันทึก M2M field (instructors)
-            form.save_m2m()
+            if Section.objects.filter(course=course, semester=semester, section_number=section_number).exists():
+                form.add_error('section_number', 'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน')
+            else:
+                # ถ้าไม่ซ้ำ ก็บันทึกข้อมูล
+                section = form.save(commit=False)
+                section.course = course
+                section.save()
+                section.instructors.set(form.cleaned_data['instructors'])
 
-            # เชื่อม formset กับ section ที่เพิ่งสร้าง
-            formset.instance = section
-            formset.save()    
-            return redirect('courses:section-list', course_pk=course.pk)
+                formset.instance = section
+                formset.save()
+                return redirect('courses:section-list', course_pk=course.pk)
     else:
         form = SectionForm(course=course)
         formset = ClassTimeFormSet()
@@ -116,10 +121,18 @@ def section_edit(request, pk):
         form = SectionForm(request.POST, instance=section, course=section.course) 
         formset = ClassTimeFormSet(request.POST, instance=section)
         if form.is_valid() and formset.is_valid():
-            form.save()
-            section.instructors.set(form.cleaned_data['instructors'])
-            formset.save()
-            return redirect('courses:section-list', course_pk=section.course.pk)
+            # --- เพิ่ม Logic ตรวจสอบซ้ำที่นี่ (แบบไม่นับตัวเอง) ---
+            section_number = form.cleaned_data.get("section_number")
+            semester = form.cleaned_data.get("semester")
+            
+            if Section.objects.filter(course=section.course, semester=semester, section_number=section_number).exclude(pk=pk).exists():
+                form.add_error('section_number', 'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน')
+            else:
+                # ถ้าไม่ซ้ำ ก็บันทึกข้อมูล
+                form.save()
+                section.instructors.set(form.cleaned_data['instructors'])
+                formset.save()
+                return redirect('courses:section-list', course_pk=section.course.pk)
     else:
         form = SectionForm(instance=section, course=section.course)
         formset = ClassTimeFormSet(instance=section)

@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import inlineformset_factory
+from django.forms import BaseInlineFormSet, inlineformset_factory
 from django.contrib.auth.models import User
 from .models import Course, Section, ClassTime, Room
 
@@ -59,45 +59,6 @@ class SectionForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             if not isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
                 field.widget.attrs.update({'class': 'form-control'})
-    
-    def clean(self):
-        """
-        เมธอด clean() สำหรับการตรวจสอบความถูกต้องของข้อมูลแบบกำหนดเอง
-
-        รับประกันว่าหมายเลขกลุ่มเรียน (section number) จะต้องไม่ซ้ำกัน
-        สำหรับรายวิชาและภาคเรียนเดียวกัน เพื่อป้องกันการบันทึกข้อมูลซ้ำซ้อน
-        """
-        # เรียกใช้เมธอด clean ของคลาสแม่ก่อน เพื่อให้มีการตรวจสอบเบื้องต้นของฟิลด์ต่างๆ
-        cleaned_data = super().clean()
-
-        # ดึงข้อมูลจากฟิลด์ที่ผ่านการตรวจสอบเบื้องต้นแล้ว
-        section_number = cleaned_data.get("section_number")
-        semester = cleaned_data.get("semester")
-
-        # ดำเนินการตรวจสอบความไม่ซ้ำกันเฉพาะเมื่อมีข้อมูลที่จำเป็นครบถ้วน
-        if section_number and semester and self.course:
-            # สร้าง QuerySet เพื่อค้นหากลุ่มเรียนที่มี course, semester และ section_number เดียวกัน
-            queryset = Section.objects.filter(
-                course=self.course,
-                semester=semester,
-                section_number=section_number
-            )
-
-            # หากกำลังแก้ไข instance ที่มีอยู่ (ไม่ใช่การสร้างใหม่)
-            # ให้ยกเว้น instance ปัจจุบันออกจาก QuerySet
-            # เพื่อไม่ให้ฟอร์มตรวจสอบตัวเองว่าซ้ำกัน
-            if self.instance and self.instance.pk:
-                queryset = queryset.exclude(pk=self.instance.pk)
-
-            # หากยังพบกลุ่มเรียนที่ตรงกันใน QuerySet (หลังจากยกเว้น instance ปัจจุบันแล้ว)
-            # แสดงว่ามีการซ้ำกัน
-            if queryset.exists():
-                # ยิง ValidationError เพื่อแจ้งให้ผู้ใช้ทราบถึงข้อผิดพลาด
-                raise forms.ValidationError(
-                    "กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน"
-                )
-        # คืนค่า cleaned_data ไม่ว่าจะมีข้อผิดพลาดหรือไม่ (ข้อผิดพลาดจะถูกเก็บใน form.errors)
-        return cleaned_data
 
 # Form สำหรับ ClassTime
 class ClassTimeForm(forms.ModelForm):
@@ -109,6 +70,50 @@ class ClassTimeForm(forms.ModelForm):
             'end_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
             'day': forms.Select(attrs={'class': 'form-select'}),
         }
+        
+    def clean(self):
+        """
+        ตรวจสอบว่าถ้ากรอกข้อมูลในแถวแล้ว ต้องกรอกให้ครบทุกช่อง
+        """
+        cleaned_data = super().clean()
+        
+        # ดึงข้อมูลจากฟอร์ม
+        day = cleaned_data.get('day')
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+
+        # ตรวจสอบว่าฟอร์มนี้ไม่ใช่ฟอร์มเปล่าที่ไม่ได้กรอกอะไรเลย
+        # และไม่ได้ถูกติ๊กเพื่อลบ
+        is_empty = not any([day, start_time, end_time])
+        is_marked_for_deletion = cleaned_data.get('DELETE', False)
+
+        if not is_empty and not is_marked_for_deletion:
+            # ถ้ามีข้อมูลอย่างน้อย 1 ช่อง แต่ไม่ครบทุกช่อง
+            if not all([day, start_time, end_time]):
+                # เพิ่ม Error ให้กับฟิลด์ที่ว่าง
+                if not day:
+                    self.add_error('day', 'กรุณาเลือกวัน')
+                if not start_time:
+                    self.add_error('start_time', 'กรุณากรอกเวลาเริ่ม')
+                if not end_time:
+                    self.add_error('end_time', 'กรุณากรอกเวลาเลิก')
+            
+            # (Optional) ตรวจสอบว่าเวลาเลิกเรียนอยู่หลังเวลาเริ่มเรียน
+            elif end_time <= start_time:
+                self.add_error('end_time', 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน')
+        
+        return cleaned_data
+    
+class BaseClassTimeFormSet(BaseInlineFormSet):
+    def clean(self):
+        super().clean()
+        count = 0
+        for form in self.forms:
+            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
+                count += 1
+        
+        if count < 1:
+            raise forms.ValidationError('กรุณากรอกข้อมูลคาบเรียนอย่างน้อย 1 คาบเรียน')
 
 # Formset สำหรับ ClassTime
 # สร้าง ClassTimeFormSet โดยใช้ inlineformset_factory
@@ -117,10 +122,11 @@ ClassTimeFormSet = inlineformset_factory(
     Section, # โมเดลหลัก (Parent Model): ClassTime จะถูกเชื่อมโยงกับ Section
     ClassTime, # โมเดลลูก (Child Model): ClassTime คือข้อมูลที่จะถูกจัดการผ่าน Formset นี้
     form=ClassTimeForm, # ใช้ ClassTimeForm ที่เราสร้างไว้ก่อนหน้านี้สำหรับแต่ละฟอร์มใน Formset
+    formset=BaseClassTimeFormSet, # ใช้ BaseClassTimeFormSet ที่เราสร้างไว้เพื่อจัดการการตรวจสอบความถูกต้อง
     extra=1, # จำนวนฟอร์มเปล่าเพิ่มเติมที่จะแสดงในหน้า (สำหรับเพิ่มรายการใหม่)
              # ในที่นี้คือจะแสดงฟอร์มเปล่า 1 ฟอร์มเสมอ
     can_delete=True, # อนุญาตให้ผู้ใช้สามารถลบรายการ ClassTime ที่มีอยู่ได้
                      # จะมี checkbox "Delete" ปรากฏขึ้นข้างๆ แต่ละรายการ
-    can_delete_extra=True # อนุญาตให้ผู้ใช้ลบฟอร์มเปล่าที่ถูกเพิ่มโดย 'extra'
+    can_delete_extra=True, # อนุญาตให้ผู้ใช้ลบฟอร์มเปล่าที่ถูกเพิ่มโดย 'extra'
                           # (ถ้าผู้ใช้เพิ่มฟอร์มเปล่าขึ้นมาแล้วตัดสินใจไม่ใช้ ก็สามารถลบได้)
 )
