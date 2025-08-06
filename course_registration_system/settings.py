@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
+    'phonenumber_field',
     'widget_tweaks',
     
     'core',  # แอปพลิเคชันหลักของระบบลงทะเบียนเรียน
@@ -81,7 +82,7 @@ WSGI_APPLICATION = 'course_registration_system.wsgi.application'
 DATABASES = {
     'default':{ 
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'university_database',        # ชื่อฐานข้อมูลที่คุณสร้าง
+        'NAME': 'university_database_demo',        # ชื่อฐานข้อมูลที่คุณสร้าง
         'USER': 'postgres',          # ชื่อผู้ใช้งานที่คุณสร้าง
         'PASSWORD': '12345678',         # รหัสผ่าน
         'HOST': 'localhost',        # หรือ IP ของเซิร์ฟเวอร์ฐานข้อมูล

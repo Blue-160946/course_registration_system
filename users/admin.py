@@ -9,9 +9,10 @@ class ProfileInline(admin.StackedInline):
     verbose_name_plural = 'โปรไฟล์'
     fieldsets = (
         ('ประเภทผู้ใช้', {'fields': ('user_type',)}),
-        ('ข้อมูลนิสิต', {'fields': ('student_id','student_name', 'branch', 'student_status'), 'classes': ('collapse',)}),
-        ('ข้อมูลอาจารย์', {'fields': ('instructor_name',), 'classes': ('collapse',)}),
-        ('ข้อมูลเจ้าหน้าที่', {'fields': ('staff_name',), 'classes': ('collapse',)}),
+        ('ข้อมูลพื้นฐาน', {'fields': ('first_name_th', 'last_name_th', 'gender','date_of_birth', 'phone_number', 'address'), 'classes': ('collapse',)}),
+        ('ข้อมูลนิสิต', {'fields': ('student_id', 'branch', 'student_status'), 'classes': ('collapse',)}),
+        ('ข้อมูลอาจารย์', {'fields': ('acdemic_title', 'department'), 'classes': ('collapse',)}),
+        ('ข้อมูลเจ้าหน้าที่', {'fields': ('job_title',), 'classes': ('collapse',)}),
     )
 
 class UserAdmin(BaseUserAdmin):

@@ -67,6 +67,10 @@
         </div>
     </div>
 
+    {% comment %}
+    Pagination controls
+    This section will only render if the view is paginated.
+    {% endcomment %}
     {% if is_paginated %}
     <nav class="mt-4">
         <ul class="pagination justify-content-center">

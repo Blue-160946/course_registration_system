@@ -46,7 +46,7 @@
               {% endfor %}
             </td>
             <td>{{ section.room|default:"-" }}</td>
-            <td>{% for inst in section.instructors.all %}{{ inst.profile.instructor_name }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
+            <td>{% for inst in section.instructors.all %}{{ inst.profile.academic_title }} {{ inst.profile.first_name_th }} {{ inst.profile.last_name_th }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
           </tr>
         {% empty %}
           <tr><td colspan="6" class="text-center">คุณยังไม่ได้ลงทะเบียนเรียนในภาคเรียนนี้</td></tr>

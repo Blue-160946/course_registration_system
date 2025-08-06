@@ -22,7 +22,7 @@
                     </div>
                     <div class="info-item mb-3">
                         <div class="text-muted small">ชื่อ-สกุล</div>
-                        <div class="fw-bold">{{ student.profile.student_name }}</div>
+                        <div class="fw-bold">{{ student.profile.first_name_th|default:"-" }} {{ student.profile.last_name_th|default:"-" }}</div>
                     </div>
                 </div>
                 <div class="col-md-6">
