@@ -225,7 +225,6 @@ def enroll_section(request, section_pk):
     messages.success(request, f"ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) สำเร็จ!")
     return redirect('courses:public-section-list')
 
-
 @login_required
 def my_schedule(request):
     """หน้าสำหรับดูตารางเรียนของฉัน"""

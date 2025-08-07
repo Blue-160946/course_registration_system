@@ -6,8 +6,12 @@ from .models import Course, Section, ClassTime, Room
 # Form Field สำหรับเลือกอาจารย์
 class InstructorChoiceField(forms.ModelMultipleChoiceField):
     def label_from_instance(self, obj):
-        if hasattr(obj, 'profile') and obj.profile.instructor_name:
-            return obj.profile.instructor_name
+        if hasattr(obj, 'profile') and obj.profile.first_name_th and obj.profile.last_name_th:
+            # ใช้ get_acdemic_title_display() เพื่อดึงค่าภาษาไทย
+            title = obj.profile.get_acdemic_title_display() or ''
+            first_name = obj.profile.first_name_th
+            last_name = obj.profile.last_name_th
+            return f"{title} {first_name} {last_name}".strip()
         return obj.username
 
 # Form สำหรับ Course
@@ -40,7 +44,6 @@ class SectionForm(forms.ModelForm):
     instructors = InstructorChoiceField(
         queryset=User.objects.filter(profile__user_type='INSTRUCTOR'),
         widget=forms.SelectMultiple, # Widget สำหรับ Select2
-        required=True,
         label="อาจารย์ผู้สอน"
     )
     room = forms.ModelChoiceField(

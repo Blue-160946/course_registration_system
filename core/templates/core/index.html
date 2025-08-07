@@ -89,8 +89,8 @@
                   <i class="bi bi-person me-2 text-orange"></i>
                   <strong>ผู้สอน:</strong> 
                   {% for instructor in section.instructors.all %}
-                    {% if instructor.profile.instructor_name %}
-                        {{ instructor.profile.instructor_name }}
+                    {% if instructor.profile.get_acdemic_title_display and instructor.profile.first_name_th and instructor.profile.last_name_th %}
+                        {{ instructor.profile.get_acdemic_title_display }} {{ instructor.profile.first_name_th }} {{ instructor.profile.last_name_th }}
                     {% else %}
                         {{ instructor.username }}
                     {% endif %}

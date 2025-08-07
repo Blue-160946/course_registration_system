@@ -28,7 +28,7 @@
                         {% for student in students %}
                         <tr>
                             <td class="ps-4">{{ student.profile.student_id|default:"-" }}</td>
-                            <td class="fw-bold">{{ student.profile.student_name|default:"-" }}</td>
+                            <td class="fw-bold">{{ student.profile.first_name_th |default:"-" }} {{ student.profile.last_name_th |default:"-" }}</td>
                             <td>{{ student.profile.branch.name|default:"-" }}</td>
                             <td>
                                 <span class="badge" style="background-color: {% if student.profile.student_status == 'กำลังศึกษา' %}#d4edda{% else %}#f8d7da{% endif %}; 

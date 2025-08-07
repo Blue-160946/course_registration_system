@@ -48,7 +48,7 @@ class SectionAdmin(admin.ModelAdmin):
     inlines = [ClassTimeInline]
 
     def display_instructors(self, obj):
-        return ", ".join([user.profile.instructor_name or user.username for user in obj.instructors.all()])
+        return ", ".join([user.profile.first_name_th or user.username for user in obj.instructors.all()])
     
     display_instructors.short_description = 'อาจารย์ผู้สอน'
     

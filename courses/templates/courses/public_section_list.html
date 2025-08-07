@@ -65,7 +65,17 @@
               {% endfor %}
             </td>
             <td>{{ section.room|default:"-" }}</td>
-            <td>{% for inst in section.instructors.all %}{{ inst.profile.academic_title }} {{ inst.profile.first_name_th }} {{ inst.profile.last_name_th }}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
+            <td>{% for instructor in section.instructors.all %}
+                    {% if instructor.profile.get_acdemic_title_display and instructor.profile.first_name_th and instructor.profile.last_name_th %}
+                        {{ instructor.profile.get_acdemic_title_display }} {{ instructor.profile.first_name_th }} {{ instructor.profile.last_name_th }}
+                    {% else %}
+                        {{ instructor.username }}
+                    {% endif %}
+                    {% if not forloop.last %}<br>{% endif %}
+                      {% empty %}
+                        -
+                    {% endfor %}
+            </td>
             <td>
               {% if request.user in section.students.all %}
                 <span class="badge bg-success">ลงทะเบียนแล้ว</span>
