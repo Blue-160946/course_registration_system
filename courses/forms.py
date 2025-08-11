@@ -19,8 +19,46 @@ class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
         fields = ['code', 'name', 'department', 'credits', 'description', 'is_active']
-        widgets = { 'description': forms.Textarea(attrs={'rows': 4}), }
-    
+        widgets = {
+            'code': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'เช่น 012457'
+            }),
+            'name': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'ชื่อวิชา'
+            }),
+            'department': forms.Select(attrs={'class': 'form-select'}),
+            'credits': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': 1,
+                'max': 9
+            }),
+            'description': forms.Textarea(attrs={
+                'rows': 4,
+                'class': 'form-control',
+                'placeholder': 'อธิบายรายละเอียดของรายวิชา'
+            }),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+        help_texts = {
+            'credits': 'จำนวนหน่วยกิต 1-9 หน่วยกิต',
+            'is_active': 'เปิด/ปิด การใช้งานรายวิชา'
+        }
+        error_messages = {
+            'code': {
+                'required': 'กรุณากรอกรหัสวิชา',
+                'unique': 'รหัสวิชานี้มีอยู่ในระบบแล้ว',
+            },
+            'name': {'required': 'กรุณากรอกชื่อวิชา'},
+            'department': {'required': 'กรุณาเลือกภาควิชา'},
+            'credits': {
+                'required': 'กรุณากรอกจำนวนหน่วยกิต',
+                'min_value': 'หน่วยกิตต้องไม่น้อยกว่า 1',
+                'max_value': 'หน่วยกิตต้องไม่เกิน 9',
+            },
+        }
+
     def __init__(self, *args, **kwargs):
         """
         ปรับแต่งการเริ่มต้นของฟอร์ม
@@ -43,18 +81,58 @@ class CourseForm(forms.ModelForm):
 class SectionForm(forms.ModelForm):
     instructors = InstructorChoiceField(
         queryset=User.objects.filter(profile__user_type='INSTRUCTOR'),
-        widget=forms.SelectMultiple, # Widget สำหรับ Select2
-        label="อาจารย์ผู้สอน"
+        widget=forms.SelectMultiple(attrs={
+            'class': 'form-control select2',
+            'data-placeholder': 'เลือกอาจารย์ผู้สอน'
+        }),
+        required=True,
+        label="อาจารย์ผู้สอน",
+        help_text="เลือกอาจารย์ผู้สอน"
     )
     room = forms.ModelChoiceField(
-        queryset=Room.objects.all(),
-        widget=forms.Select(attrs={'class': 'form-select'}),
+        queryset=Room.objects.all().order_by('building', 'room_number'),
+        widget=forms.Select(attrs={
+            'class': 'form-select',
+            'data-placeholder': 'เลือกห้องเรียน'
+        }),
         required=True,
-        label="ห้องเรียน"
+        label="ห้องเรียน",
+        help_text="เลือกห้องเรียนที่ใช้สอน"
     )
     class Meta:
         model = Section
         fields = ['semester', 'section_number', 'room', 'capacity', 'instructors']
+        widgets = {
+            'semester': forms.Select(attrs={
+                'class': 'form-select'
+            }),
+            'section_number': forms.TextInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'เช่น 1, 2, 3'
+            }),
+            'capacity': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'min': '1',
+                'max': '200',
+                'placeholder': 'จำนวนที่รับ'
+            })
+        }
+        help_texts = {
+            'semester': 'เลือกภาคการศึกษา',
+            'section_number': 'กรอกหมายเลขกลุ่มเรียน (1-99)',
+            'capacity': 'ระบุจำนวนที่รับนิสิต (1-200 คน)',
+        }
+        error_messages = {
+            'semester': {'required': 'กรุณาเลือกภาคการศึกษา'},
+            'section_number': {'required': 'กรุณากรอกหมายเลขกลุ่มเรียน'},
+            'room': {'required': 'กรุณาเลือกห้องเรียน'},
+            'capacity': {
+                'required': 'กรุณากรอกจำนวนที่รับ',
+                'min_value': 'จำนวนที่รับต้องไม่น้อยกว่า 1 คน',
+                'max_value': 'จำนวนที่รับต้องไม่เกิน 200 คน',
+            },
+            'instructors': {'required': 'กรุณาเลือกอาจารย์ผู้สอนอย่างน้อย 1 คน'},
+        }
 
     def __init__(self, *args, **kwargs):
         self.course = kwargs.pop('course', None)
@@ -69,9 +147,28 @@ class ClassTimeForm(forms.ModelForm):
         model = ClassTime
         fields = ['day', 'start_time', 'end_time']
         widgets = {
-            'start_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'end_time': forms.TimeInput(attrs={'type': 'time', 'class': 'form-control'}),
-            'day': forms.Select(attrs={'class': 'form-select'}),
+            'day': forms.Select(attrs={
+                'class': 'form-select',
+                'data-placeholder': 'เลือกวัน'
+            }),
+            'start_time': forms.TimeInput(attrs={
+                'type': 'time',
+                'class': 'form-control',
+            }),
+            'end_time': forms.TimeInput(attrs={
+                'type': 'time',
+                'class': 'form-control',
+            }),
+        }
+        help_texts = {
+            'day': 'เลือกวันที่เรียน',
+            'start_time': 'เวลาเริ่มเรียน (08:00-20:00)',
+            'end_time': 'เวลาเลิกเรียน (09:00-21:00)',
+        }
+        error_messages = {
+            'day': {'required': 'กรุณาเลือกวัน'},
+            'start_time': {'required': 'กรุณากรอกเวลาเริ่ม'},
+            'end_time': {'required': 'กรุณากรอกเวลาเลิก'},
         }
         
     def clean(self):

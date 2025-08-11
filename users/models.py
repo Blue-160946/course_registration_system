@@ -47,14 +47,20 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, verbose_name="ผู้ใช้")
     user_type = models.CharField(max_length=10, choices=UserType.choices, default=UserType.STUDENT, verbose_name="ประเภทผู้ใช้")
     
+    # Validators
     thai_validator = RegexValidator(
-    regex=r'^[\u0E00-\u0E7F]+$',
-    message='กรุณาป้อนเป็นตัวอักษรภาษาไทยเท่านั้น'
+        regex=r'^[\u0E00-\u0E7F\s]+$',
+        message='กรุณาป้อนเป็นตัวอักษรภาษาไทยเท่านั้น'
     )
     
     student_id_validator = RegexValidator(
-        regex=r'^\d{8}$', # บังคับให้เป็นตัวเลข 8 หลัก
+        regex=r'^\d{8}$',
         message='รหัสนิสิตต้องเป็นตัวเลข 8 หลัก'
+    )
+    
+    address_validator = RegexValidator(
+        regex=r'^[ก-๙0-9/\s,.-]+$',
+        message='ที่อยู่ต้องเป็นภาษาไทยและอักขระที่กำหนดเท่านั้น'
     )
     
     #ข้อมูลพื้นฐาน
@@ -71,10 +77,22 @@ class Profile(models.Model):
     gender = models.CharField(max_length=10, choices=Gender.choices, null=True, blank=True, verbose_name="เพศ")
     date_of_birth = models.DateField(null=True, blank=True, verbose_name="วันเกิด")
     phone_number = PhoneNumberField(null=True, blank=True, verbose_name="เบอร์โทรศัพท์", region ='TH')
-    address = models.TextField(null=True, blank=True, verbose_name="ที่อยู่")
+    address = models.TextField(
+        null=True, 
+        blank=True, 
+        verbose_name="ที่อยู่",
+        validators=[address_validator],
+        help_text="กรอกที่อยู่เป็นภาษาไทย ใช้ตัวเลขและเครื่องหมาย /,.-"
+    )
     
     # ข้อมูลเพิ่มเติมสำหรับเจ้าหน้าที่
-    job_title = models.CharField(max_length=100, choices=JobTitle.choices, null=True, blank=True, verbose_name="ตำแหน่งงาน")
+    job_title = models.CharField(
+        max_length=100, 
+        choices=JobTitle.choices, 
+        null=True, 
+        blank=True, 
+        verbose_name="ตำแหน่งงาน"
+    )
     
     # ข้อมูลเพิ่มเติมสำหรับนิสิต
     student_id = models.CharField(
@@ -96,9 +114,62 @@ class Profile(models.Model):
         Custom validation logic สำหรับ Model ทั้งหมด
         """
         super().clean()
-        # 1. ตรวจสอบว่าวันเกิดต้องไม่เป็นวันในอนาคต
-        if self.date_of_birth and self.date_of_birth > date.today():
-            raise ValidationError({'date_of_birth': 'วันเกิดต้องไม่เป็นวันในอนาคต'})
+        
+        # 1. ตรวจสอบว่าวันเกิดต้องไม่เป็นวันในอนาคตและไม่เก่าเกินไป
+        if self.date_of_birth:
+            if self.date_of_birth > date.today():
+                raise ValidationError({'date_of_birth': 'วันเกิดต้องไม่เป็นวันในอนาคต'})
+            
+            # คำนวณอายุ
+            today = date.today()
+            age = today.year - self.date_of_birth.year - \
+                ((today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day))
+            
+            if age < 15:
+                raise ValidationError({'date_of_birth': 'อายุต้องไม่น้อยกว่า 15 ปี'})
+            if age > 100:
+                raise ValidationError({'date_of_birth': 'อายุต้องไม่เกิน 100 ปี'})
+
+        # 2. ตรวจสอบข้อมูลตามประเภทผู้ใช้
+        if self.user_type == self.UserType.STUDENT:
+            # ตรวจสอบข้อมูลที่จำเป็นสำหรับนิสิต
+            if not self.student_id:
+                raise ValidationError({'student_id': 'นิสิตต้องมีรหัสนิสิต'})
+            if not self.branch:
+                raise ValidationError({'branch': 'นิสิตต้องระบุสาขาวิชา'})
+            # เช็คว่าไม่มีข้อมูลที่ไม่เกี่ยวข้องกับนิสิต
+            if self.acdemic_title or self.job_title:
+                raise ValidationError('นิสิตไม่ควรมีข้อมูลตำแหน่งทางวิชาการหรือตำแหน่งงาน')
+
+        elif self.user_type == self.UserType.INSTRUCTOR:
+            # ตรวจสอบข้อมูลที่จำเป็นสำหรับอาจารย์
+            if not self.department:
+                raise ValidationError({'department': 'อาจารย์ต้องระบุภาควิชา'})
+            if not self.acdemic_title:
+                raise ValidationError({'acdemic_title': 'อาจารย์ต้องระบุตำแหน่งทางวิชาการ'})
+            # เช็คว่าไม่มีข้อมูลที่ไม่เกี่ยวข้องกับอาจารย์
+            if self.student_id or self.student_status or self.job_title:
+                raise ValidationError('อาจารย์ไม่ควรมีข้อมูลรหัสนิสิต สถานะนิสิต หรือตำแหน่งงาน')
+
+        elif self.user_type == self.UserType.STAFF:
+            # ตรวจสอบข้อมูลที่จำเป็นสำหรับเจ้าหน้าที่
+            if not self.job_title:
+                raise ValidationError({'job_title': 'เจ้าหน้าที่ต้องระบุตำแหน่งงาน'})
+            # เช็คว่าไม่มีข้อมูลที่ไม่เกี่ยวข้องกับเจ้าหน้าที่
+            if self.student_id or self.student_status or self.acdemic_title:
+                raise ValidationError('เจ้าหน้าที่ไม่ควรมีข้อมูลรหัสนิสิต สถานะนิสิต หรือตำแหน่งทางวิชาการ')
+
+        # 3. ตรวจสอบชื่อภาษาไทย
+        if self.first_name_th or self.last_name_th:
+            if not (self.first_name_th and self.last_name_th):
+                raise ValidationError('กรุณากรอกทั้งชื่อและนามสกุลภาษาไทย')
+
+        # 4. ตรวจสอบที่อยู่
+        if self.address and len(self.address.strip()) < 10:
+            raise ValidationError({'address': 'ที่อยู่ต้องมีความยาวอย่างน้อย 10 ตัวอักษร'})
 
     def __str__(self):
+        # แสดงชื่อภาษาไทยถ้ามี
+        if self.first_name_th and self.last_name_th:
+            return f"{self.first_name_th} {self.last_name_th}"
         return self.user.username
