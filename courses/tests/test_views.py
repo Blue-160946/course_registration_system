@@ -47,7 +47,7 @@ def semester(db):
 @pytest.fixture
 def course(db, department):
     return Course.objects.create(
-        code="CS101", name="Programming", department=department, credits=3
+        code="101154", name="Programming", department=department, credits=3
     )
 
 @pytest.fixture
@@ -78,7 +78,7 @@ def test_course_add_positive(client, staff_user, department):
     client.force_login(staff_user)
     url = reverse('courses:course-add')
     resp = client.post(url, {
-        'code': 'CS999',
+        'code': '215487',
         'name': 'Test Course',
         'department': department.pk,
         'credits': 3,
@@ -86,7 +86,7 @@ def test_course_add_positive(client, staff_user, department):
         'is_active': True,
     })
     assert resp.status_code == 302
-    assert Course.objects.filter(code='CS999').exists()
+    assert Course.objects.filter(code='215487').exists()
 
 @pytest.mark.django_db
 def test_course_add_invalid(client, staff_user, department):
