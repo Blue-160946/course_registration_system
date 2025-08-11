@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.forms import ValidationError
 from users.models import Profile
 from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
+from datetime import datetime, date
 
 class Faculty(models.Model):
     name = models.CharField(max_length=200, unique=True, verbose_name="ชื่อคณะ")
@@ -72,9 +73,39 @@ class Course(models.Model):
         ]
     )
     is_active = models.BooleanField(default=True, verbose_name="สถานะเปิดใช้งาน")
-    code = models.CharField(max_length=10, unique=True, verbose_name="รหัสวิชา")
-    name = models.CharField(max_length=200, verbose_name="ชื่อวิชา")
-    description = models.TextField(blank=True, null=True, verbose_name="คำอธิบายวิชา")
+    code = models.CharField(
+        max_length=10, 
+        unique=True, 
+        verbose_name="รหัสวิชา",
+        validators=[
+            RegexValidator(
+                regex=r'^\d{6}$',
+                message='รหัสวิชาต้องเป็นตัวเลข 6 หลัก'
+            )
+        ]
+    )
+    name = models.CharField(
+        max_length=200, 
+        verbose_name="ชื่อวิชา",
+        validators=[
+            RegexValidator(
+                regex=r'^[ก-์A-Za-z0-9\s\-(),]+$',
+                message='ชื่อวิชาต้องประกอบด้วยตัวอักษรภาษาไทย ภาษาอังกฤษ ตัวเลข และเครื่องหมาย -(),เท่านั้น'
+            )
+        ]
+    )
+    description = models.TextField(
+        blank=True, 
+        null=True, 
+        verbose_name="คำอธิบายวิชา",
+        validators=[
+            RegexValidator(
+                regex=r'^[ก-์A-Za-z0-9\s\-(),.]+$',
+                message='คำอธิบายวิชาต้องประกอบด้วยตัวอักษรภาษาไทย ภาษาอังกฤษ ตัวเลข และเครื่องหมาย -(),.เท่านั้น'
+            )
+        ]
+    )
+
     def __str__(self):
         return f"{self.code} - {self.name}"
 
@@ -85,15 +116,18 @@ class Section(models.Model):
         verbose_name="กลุ่มเรียน (Sec)",
         validators=[
             RegexValidator(
-                regex=r'^[0-9]$',
-                message='กรุณากรอกหมายเลขกลุ่มเรียนเป็นตัวเลข'
+                regex=r'^[1-9][0-9]?$',
+                message='กรุณากรอกหมายเลขกลุ่มเรียนเป็นตัวเลข 1-99'
             )
         ]
     )
     capacity = models.PositiveIntegerField(
         default=30, 
         verbose_name="จำนวนที่รับ",
-        validators=[MinValueValidator(1, message="จำนวนที่รับต้องมีค่าอย่างน้อย 1")]
+        validators=[
+            MinValueValidator(1, message="จำนวนที่รับต้องมีค่าอย่างน้อย 1"),
+            MaxValueValidator(200, message="จำนวนที่รับต้องไม่เกิน 200 คน")
+        ]
     )
     
     semester = models.ForeignKey(Semester, on_delete=models.PROTECT, related_name="sections", verbose_name="ภาคเรียน")
@@ -149,9 +183,48 @@ class ClassTime(models.Model):
     end_time = models.TimeField()
     
     def clean(self):
-        # ตรวจสอบว่า end_time ไม่ได้มาก่อน start_time
-        if self.start_time and self.end_time and self.end_time <= self.start_time:
-            raise ValidationError({'end_time': 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน'})
+        super().clean()
+        if self.start_time and self.end_time:
+            # ตรวจสอบว่า end_time ไม่ได้มาก่อน start_time
+            if self.end_time <= self.start_time:
+                raise ValidationError({'end_time': 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน'})
+            
+            # ตรวจสอบว่าเวลาเรียนไม่เกิน 4 ชั่วโมงต่อคาบ
+            duration = (
+                datetime.combine(date.today(), self.end_time) - 
+                datetime.combine(date.today(), self.start_time)
+            ).seconds / 3600  # แปลงเป็นชั่วโมง
+            
+            if duration > 4:
+                raise ValidationError('ระยะเวลาเรียนต้องไม่เกิน 4 ชั่วโมงต่อคาบ')
+
+            # ตรวจสอบการซ้ำซ้อนของเวลาเรียนในวันเดียวกัน
+            if self.section_id:  # ตรวจสอบเฉพาะเมื่อมี section แล้ว
+                overlapping_times = ClassTime.objects.filter(
+                    section__semester=self.section.semester,
+                    day=self.day
+                ).exclude(id=self.id)  # ไม่นับตัวเอง
+
+                for time in overlapping_times:
+                    if (
+                        (self.start_time <= time.start_time <= self.end_time) or
+                        (self.start_time <= time.end_time <= self.end_time) or
+                        (time.start_time <= self.start_time and time.end_time >= self.end_time)
+                    ):
+                        # ตรวจสอบว่ามีการใช้ห้องซ้ำกันหรือไม่
+                        if self.section.room and self.section.room == time.section.room:
+                            raise ValidationError(
+                                f'ห้อง {self.section.room} ถูกใช้งานในช่วงเวลานี้แล้ว ' +
+                                f'โดยวิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
+                            )
+
+                        # ตรวจสอบว่าอาจารย์สอนซ้ำซ้อนหรือไม่
+                        if any(instructor in time.section.instructors.all() 
+                              for instructor in self.section.instructors.all()):
+                            raise ValidationError(
+                                'มีอาจารย์ในกลุ่มเรียนนี้มีตารางสอนซ้ำซ้อนกับ ' +
+                                f'วิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
+                            )
 
     def __str__(self):
         return f"{self.section.course.code} Sec {self.section.section_number} ({self.get_day_display()} {self.start_time})"
