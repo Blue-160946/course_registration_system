@@ -78,18 +78,24 @@ WSGI_APPLICATION = 'course_registration_system.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# โหลด .env
+from pathlib import Path
+import environ
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / '.env')
 
 DATABASES = {
-    'default':{ 
+    'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'university_database_demo',        # ชื่อฐานข้อมูลที่คุณสร้าง
-        'USER': 'postgres',          # ชื่อผู้ใช้งานที่คุณสร้าง
-        'PASSWORD': '12345678',         # รหัสผ่าน
-        'HOST': 'localhost',        # หรือ IP ของเซิร์ฟเวอร์ฐานข้อมูล
-        'PORT': '5432',             # พอร์ต ของ PostgreSQL
+        'NAME': env('NAME_DB'),
+        'USER': env('USER_DB'),
+        'PASSWORD': env('PASSWORD_DB'),
+        'HOST': env('HOST_DB', default='localhost'),
+        'PORT': env('PORT_DB', default='5432'),
     }
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
