@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     
+    'django_extensions',
     'phonenumber_field',
     'widget_tweaks',
     
