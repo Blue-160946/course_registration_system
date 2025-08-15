@@ -6,19 +6,84 @@ from django.core.validators import MinValueValidator, MaxValueValidator, RegexVa
 from datetime import datetime, date
 
 class Faculty(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name="ชื่อคณะ")
+    thai_validator = RegexValidator(
+        regex=r'^[ก-์\s]+$',
+        message='กรุณาป้อนชื่อคณะเป็นภาษาไทยเท่านั้น'
+    )
+    name = models.CharField(
+        max_length=200, 
+        unique=True, 
+        verbose_name="ชื่อคณะ",
+        validators=[thai_validator]
+    )
+    
+    def clean(self):
+        super().clean()
+        if not self.name:
+            raise ValidationError({'name': 'กรุณากรอกชื่อคณะ'})
+        if len(self.name.strip()) < 2:
+            raise ValidationError({'name': 'ชื่อคณะต้องมีความยาวอย่างน้อย 2 ตัวอักษร'})
+            
     def __str__(self):
         return self.name
 
 class Department(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name="ชื่อภาควิชา")
-    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, related_name="departments", verbose_name="สังกัดคณะ")
+    thai_validator = RegexValidator(
+        regex=r'^[ก-์\s]+$',
+        message='กรุณาป้อนชื่อภาควิชาเป็นภาษาไทยเท่านั้น'
+    )
+    name = models.CharField(
+        max_length=200, 
+        unique=True, 
+        verbose_name="ชื่อภาควิชา",
+        validators=[thai_validator]
+    )
+    faculty = models.ForeignKey(
+        Faculty, 
+        on_delete=models.CASCADE, 
+        related_name="departments", 
+        verbose_name="สังกัดคณะ"
+    )
+    
+    def clean(self):
+        super().clean()
+        if not self.name:
+            raise ValidationError({'name': 'กรุณากรอกชื่อภาควิชา'})
+        if len(self.name.strip()) < 2:
+            raise ValidationError({'name': 'ชื่อภาควิชาต้องมีความยาวอย่างน้อย 2 ตัวอักษร'})
+        if not self.faculty:
+            raise ValidationError({'faculty': 'กรุณาเลือกคณะ'})
+            
     def __str__(self):
         return self.name
 
 class Branch(models.Model):
-    name = models.CharField(max_length=200, unique=True, verbose_name="ชื่อสาขาวิชา")
-    department = models.ForeignKey(Department, on_delete=models.CASCADE, related_name="branches", verbose_name="สังกัดภาควิชา")
+    thai_validator = RegexValidator(
+        regex=r'^[ก-์\s]+$',
+        message='กรุณาป้อนชื่อสาขาวิชาเป็นภาษาไทยเท่านั้น'
+    )
+    name = models.CharField(
+        max_length=200, 
+        unique=True, 
+        verbose_name="ชื่อสาขาวิชา",
+        validators=[thai_validator]
+    )
+    department = models.ForeignKey(
+        Department, 
+        on_delete=models.CASCADE, 
+        related_name="branches", 
+        verbose_name="สังกัดภาควิชา"
+    )
+    
+    def clean(self):
+        super().clean()
+        if not self.name:
+            raise ValidationError({'name': 'กรุณากรอกชื่อสาขาวิชา'})
+        if len(self.name.strip()) < 2:
+            raise ValidationError({'name': 'ชื่อสาขาวิชาต้องมีความยาวอย่างน้อย 2 ตัวอักษร'})
+        if not self.department:
+            raise ValidationError({'department': 'กรุณาเลือกภาควิชา'})
+            
     def __str__(self):
         return self.name
     
@@ -34,15 +99,44 @@ class Semester(models.Model):
         verbose_name="ปีการศึกษา (พ.ศ.)",
         validators=[MinValueValidator(2560, message="ปีการศึกษาต้องไม่เก่ากว่าปี 2560")]
     )
-    semester = models.PositiveSmallIntegerField(choices=SEMESTER_CHOICES, verbose_name="ภาคเรียน")
-    start_date = models.DateField(verbose_name="วันเปิดภาคเรียน")
-    end_date = models.DateField(verbose_name="วันสิ้นสุดภาคเรียน")
+    semester = models.PositiveSmallIntegerField(
+        choices=SEMESTER_CHOICES, 
+        verbose_name="ภาคเรียน"
+    )
+    start_date = models.DateField(
+        verbose_name="วันเปิดภาคเรียน"
+    )
+    end_date = models.DateField(
+        verbose_name="วันสิ้นสุดภาคเรียน"
+    )
     
     def clean(self):
-        # 1. ตรวจสอบว่า end_date ไม่ได้มาก่อน start_date
-        if self.start_date and self.end_date and self.end_date < self.start_date:
-            raise ValidationError({'end_date': 'วันสิ้นสุดภาคเรียนต้องอยู่หลังวันเปิดภาคเรียน'})
-
+        super().clean()
+        if not self.year:
+            raise ValidationError({'year': 'กรุณากรอกปีการศึกษา'})
+        if not self.semester:
+            raise ValidationError({'semester': 'กรุณาเลือกภาคเรียน'})
+        if not self.start_date:
+            raise ValidationError({'start_date': 'กรุณากรอกวันเปิดภาคเรียน'})
+        if not self.end_date:
+            raise ValidationError({'end_date': 'กรุณากรอกวันสิ้นสุดภาคเรียน'})
+            
+        # ตรวจสอบปีการศึกษา
+        current_year = datetime.now().year + 543  # แปลงเป็น พ.ศ.
+        if self.year > current_year + 1:
+            raise ValidationError({'year': 'ไม่สามารถสร้างภาคเรียนล่วงหน้าเกิน 1 ปีการศึกษา'})
+            
+        # ตรวจสอบวันที่
+        if self.start_date and self.end_date:
+            # ตรวจสอบว่า end_date ไม่ได้มาก่อน start_date
+            if self.end_date < self.start_date:
+                raise ValidationError({'end_date': 'วันสิ้นสุดภาคเรียนต้องอยู่หลังวันเปิดภาคเรียน'})
+                
+            # ตรวจสอบระยะเวลาภาคเรียน
+            semester_duration = (self.end_date - self.start_date).days
+            if semester_duration < 180:
+                raise ValidationError('ระยะเวลาภาคเรียนต้องไม่น้อยกว่า 180 วัน')
+            
     def __str__(self):
         return f"ปีการศึกษา {self.year} - {self.get_semester_display()}"
 
@@ -51,8 +145,35 @@ class Semester(models.Model):
     
 class Room(models.Model):
     """เก็บข้อมูลห้องเรียน"""
-    building = models.CharField(max_length=100, verbose_name="ชื่อตึก")
-    room_number = models.CharField(max_length=20, verbose_name="เลขห้อง")
+    building_validator = RegexValidator(
+        regex=r'^[ก-์A-Za-z0-9\s\-]+$',
+        message='ชื่อตึกต้องประกอบด้วยตัวอักษรภาษาไทย ภาษาอังกฤษ ตัวเลข และเครื่องหมาย - เท่านั้น'
+    )
+    room_number_validator = RegexValidator(
+        regex=r'^[A-Za-z0-9\-]+$',
+        message='เลขห้องต้องประกอบด้วยตัวอักษรภาษาอังกฤษ ตัวเลข และเครื่องหมาย - เท่านั้น'
+    )
+    building = models.CharField(
+        max_length=100, 
+        verbose_name="ชื่อตึก",
+        validators=[building_validator]
+    )
+    room_number = models.CharField(
+        max_length=20, 
+        verbose_name="เลขห้อง",
+        validators=[room_number_validator]
+    )
+
+    def clean(self):
+        super().clean()
+        if not self.building:
+            raise ValidationError({'building': 'กรุณากรอกชื่อตึก'})
+        if not self.room_number:
+            raise ValidationError({'room_number': 'กรุณากรอกเลขห้อง'})
+        if len(self.building.strip()) < 2:
+            raise ValidationError({'building': 'ชื่อตึกต้องมีความยาวอย่างน้อย 2 ตัวอักษร'})
+        if len(self.room_number.strip()) < 1:
+            raise ValidationError({'room_number': 'เลขห้องต้องมีความยาวอย่างน้อย 1 ตัวอักษร'})
 
     def __str__(self):
         return f"{self.building} - ห้อง {self.room_number}"
@@ -63,16 +184,26 @@ class Room(models.Model):
         
 
 class Course(models.Model):
-    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="courses", verbose_name="ภาควิชา", null=True, blank=True)
+    department = models.ForeignKey(
+        Department, 
+        on_delete=models.PROTECT, 
+        related_name="courses", 
+        verbose_name="ภาควิชา", 
+        null=True, 
+        blank=True
+    )
     credits = models.PositiveSmallIntegerField(
-        default=3, 
+        default=3,
         verbose_name="หน่วยกิต",
         validators=[
             MinValueValidator(1, message="หน่วยกิตต้องมีค่าอย่างน้อย 1"),
             MaxValueValidator(9, message="หน่วยกิตต้องมีค่าไม่เกิน 9")
         ]
     )
-    is_active = models.BooleanField(default=True, verbose_name="สถานะเปิดใช้งาน")
+    is_active = models.BooleanField(
+        default=True, 
+        verbose_name="สถานะเปิดใช้งาน"
+    )
     code = models.CharField(
         max_length=10, 
         unique=True, 
@@ -110,7 +241,12 @@ class Course(models.Model):
         return f"{self.code} - {self.name}"
 
 class Section(models.Model):
-    course = models.ForeignKey(Course, related_name='sections', on_delete=models.CASCADE, verbose_name="รายวิชา")
+    course = models.ForeignKey(
+        Course, 
+        related_name='sections', 
+        on_delete=models.CASCADE, 
+        verbose_name="รายวิชา"
+    )
     section_number = models.CharField(
         max_length=3, 
         verbose_name="กลุ่มเรียน (Sec)",
@@ -129,9 +265,12 @@ class Section(models.Model):
             MaxValueValidator(200, message="จำนวนที่รับต้องไม่เกิน 200 คน")
         ]
     )
-    
-    semester = models.ForeignKey(Semester, on_delete=models.PROTECT, related_name="sections", verbose_name="ภาคเรียน")
-    
+    semester = models.ForeignKey(
+        Semester, 
+        on_delete=models.PROTECT, 
+        related_name="sections", 
+        verbose_name="ภาคเรียน"
+    )
     room = models.ForeignKey(
         Room,
         on_delete=models.SET_NULL, # ถ้าห้องถูกลบ Section จะยังอยู่แต่ไม่มีห้อง
@@ -152,8 +291,18 @@ class Section(models.Model):
         blank=True,
         verbose_name="นิสิตที่ลงทะเบียน"
     )
-    def __str__(self):
-        return f"{self.course.code} - Section {self.section_number}"
+    
+    def clean(self):
+        super().clean()
+            
+        # ตรวจสอบ course เฉพาะเมื่อมีการบันทึกแล้ว
+        if self.pk and not self.course_id:
+            raise ValidationError({'course': 'กรุณาเลือกรายวิชา'})
+            
+        # ตรวจสอบว่าจำนวนนิสิตที่ลงทะเบียนต้องไม่เกินความจุ
+        if hasattr(self, 'students'):
+            if self.get_enrolled_count() > self.capacity:
+                raise ValidationError('จำนวนนิสิตที่ลงทะเบียนเกินความจุของกลุ่มเรียน')
     
     def get_enrolled_count(self):
         return self.students.count()
@@ -170,6 +319,9 @@ class Section(models.Model):
     class Meta:
         unique_together = ('course', 'semester', 'section_number')
         
+    def __str__(self):
+        return f"{self.course.code} - Section {self.section_number}"
+        
 class ClassTime(models.Model):
     
     DAY_CHOICES = [
@@ -177,10 +329,23 @@ class ClassTime(models.Model):
     ('THU', 'วันพฤหัสบดี'), ('FRI', 'วันศุกร์'), ('SAT', 'วันเสาร์'), ('SUN', 'วันอาทิตย์'),
     ]
 
-    section = models.ForeignKey(Section, on_delete=models.CASCADE, related_name="class_times")
-    day = models.CharField(max_length=3, choices=DAY_CHOICES)
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+    section = models.ForeignKey(
+        Section, 
+        on_delete=models.CASCADE,
+        verbose_name="กลุ่มเรียน",
+        related_name="class_times"
+    )
+    day = models.CharField(
+        max_length=3, 
+        choices=DAY_CHOICES,
+        verbose_name="วัน",
+    )
+    start_time = models.TimeField(
+        verbose_name="เวลาเริ่มเรียน"
+    )
+    end_time = models.TimeField(
+        verbose_name="เวลาเลิกเรียน"
+    )
     
     def clean(self):
         super().clean()
@@ -189,14 +354,14 @@ class ClassTime(models.Model):
             if self.end_time <= self.start_time:
                 raise ValidationError({'end_time': 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน'})
             
-            # ตรวจสอบว่าเวลาเรียนไม่เกิน 4 ชั่วโมงต่อคาบ
+            # ตรวจสอบว่าเวลาเรียนไม่เกิน 2 ชั่วโมงต่อคาบ
             duration = (
                 datetime.combine(date.today(), self.end_time) - 
                 datetime.combine(date.today(), self.start_time)
             ).seconds / 3600  # แปลงเป็นชั่วโมง
             
-            if duration > 4:
-                raise ValidationError('ระยะเวลาเรียนต้องไม่เกิน 4 ชั่วโมงต่อคาบ')
+            if duration > 2:
+                raise ValidationError('ระยะเวลาเรียนต้องไม่เกิน 2 ชั่วโมงต่อคาบ')
 
             # ตรวจสอบการซ้ำซ้อนของเวลาเรียนในวันเดียวกัน
             if self.section_id:  # ตรวจสอบเฉพาะเมื่อมี section แล้ว

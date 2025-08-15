@@ -5,8 +5,8 @@ from django.core.exceptions import PermissionDenied
 from django.contrib import messages
 from django.utils import timezone
 from django.db.models import Q
-from .models import Course, Section, Semester
-from .forms import ClassTimeFormSet, CourseForm, SectionForm
+from .models import Course, Section, Semester, ClassTime
+from .forms import CourseForm, SectionForm, ClassTimeForm
 
 # เช็คว่าผู้ใช้เป็น staff ก่อนเข้าถึง view
 def staff_required(view_func):
@@ -82,33 +82,22 @@ def section_add(request, course_pk):
     
     if request.method == 'POST':
         form = SectionForm(request.POST, course=course)
-        formset = ClassTimeFormSet(request.POST)
         
-        if form.is_valid() and formset.is_valid():
-            # --- เพิ่ม Logic ตรวจสอบซ้ำที่นี่ ---
-            section_number = form.cleaned_data.get("section_number")
-            semester = form.cleaned_data.get("semester")
-            
-            if Section.objects.filter(course=course, semester=semester, section_number=section_number).exists():
-                form.add_error('section_number', 'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน')
-            else:
-                # ถ้าไม่ซ้ำ ก็บันทึกข้อมูล
-                section = form.save(commit=False)
-                section.course = course
-                section.save()
-                section.instructors.set(form.cleaned_data['instructors'])
+        if form.is_valid():
+            # บันทึกข้อมูล
+            section = form.save(commit=False)
+            section.course = course
+            section.save()
+            section.instructors.set(form.cleaned_data['instructors'])
 
-                formset.instance = section
-                formset.save()
-                return redirect('courses:section-list', course_pk=course.pk)
+            return redirect('courses:section-list', course_pk=course.pk)
     else:
         form = SectionForm(course=course)
-        formset = ClassTimeFormSet()
         
     context = {
         'form': form,
-        'formset': formset,
-        'course': course
+        'course': course,
+        'object': None  # เพิ่มตรงนี้เพื่อให้ template รู้ว่าเป็นการเพิ่มใหม่
     }
     return render(request, 'courses/section_form.html', context)
 
@@ -119,27 +108,16 @@ def section_edit(request, pk):
     section = get_object_or_404(Section, pk=pk) # ดึง Section ที่ต้องการแก้ไข
     if request.method == 'POST':
         form = SectionForm(request.POST, instance=section, course=section.course) 
-        formset = ClassTimeFormSet(request.POST, instance=section)
-        if form.is_valid() and formset.is_valid():
-            # --- เพิ่ม Logic ตรวจสอบซ้ำที่นี่ (แบบไม่นับตัวเอง) ---
-            section_number = form.cleaned_data.get("section_number")
-            semester = form.cleaned_data.get("semester")
-            
-            if Section.objects.filter(course=section.course, semester=semester, section_number=section_number).exclude(pk=pk).exists():
-                form.add_error('section_number', 'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน')
-            else:
-                # ถ้าไม่ซ้ำ ก็บันทึกข้อมูล
-                form.save()
-                section.instructors.set(form.cleaned_data['instructors'])
-                formset.save()
-                return redirect('courses:section-list', course_pk=section.course.pk)
+        if form.is_valid() :
+            # บันทึกข้อมูล
+            form.save()
+            section.instructors.set(form.cleaned_data['instructors'])
+            return redirect('courses:section-list', course_pk=section.course.pk)
     else:
         form = SectionForm(instance=section, course=section.course)
-        formset = ClassTimeFormSet(instance=section)
     
     context = {
         'form': form,
-        'formset': formset,
         'course': section.course,
         'object': section
     }
@@ -224,6 +202,101 @@ def enroll_section(request, section_pk):
     section.students.add(student)
     messages.success(request, f"ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) สำเร็จ!")
     return redirect('courses:public-section-list')
+
+@login_required
+@staff_required
+def time_list(request, section_pk):
+    """แสดงรายการคาบเรียนของ Section"""
+    section = get_object_or_404(Section, pk=section_pk)
+    class_times = section.class_times.all().order_by('day', 'start_time')
+    context = {
+        'section': section,
+        'class_times': class_times
+    }
+    return render(request, 'courses/time_list.html', context)
+
+@login_required
+@staff_required
+def time_add(request, section_pk):
+    """เพิ่มคาบเรียนให้กับ Section"""
+    section = get_object_or_404(Section, pk=section_pk)
+    
+    if request.method == 'POST':
+        form = ClassTimeForm(request.POST)
+        if form.is_valid():
+            class_time = form.save(commit=False)
+            class_time.section = section
+            
+            # ตรวจสอบการซ้ำซ้อนของเวลา
+            if ClassTime.objects.filter(
+                section=section,
+                day=form.cleaned_data['day'],
+                start_time__lt=form.cleaned_data['end_time'],
+                end_time__gt=form.cleaned_data['start_time']
+            ).exists():
+                form.add_error(None, 'คาบเรียนนี้ซ้ำซ้อนกับคาบเรียนที่มีอยู่แล้ว')
+            else:
+                class_time.save()
+                messages.success(request, 'เพิ่มคาบเรียนสำเร็จ')
+                return redirect('courses:time-list', section_pk=section.pk)
+    else:
+        form = ClassTimeForm()
+    
+    context = {
+        'form': form,
+        'section': section
+    }
+    return render(request, 'courses/time_form.html', context)
+
+@login_required
+@staff_required
+def time_edit(request, pk):
+    """แก้ไขคาบเรียน"""
+    class_time = get_object_or_404(ClassTime, pk=pk)
+    section = class_time.section
+    
+    if request.method == 'POST':
+        form = ClassTimeForm(request.POST, instance=class_time)
+        if form.is_valid():
+            # ตรวจสอบการซ้ำซ้อนของเวลา (ไม่นับตัวเอง)
+            if ClassTime.objects.filter(
+                section=section,
+                day=form.cleaned_data['day'],
+                start_time__lt=form.cleaned_data['end_time'],
+                end_time__gt=form.cleaned_data['start_time']
+            ).exclude(pk=pk).exists():
+                form.add_error(None, 'คาบเรียนนี้ซ้ำซ้อนกับคาบเรียนที่มีอยู่แล้ว')
+            else:
+                form.save()
+                messages.success(request, 'แก้ไขคาบเรียนสำเร็จ')
+                return redirect('courses:time-list', section_pk=section.pk)
+    else:
+        form = ClassTimeForm(instance=class_time)
+    
+    context = {
+        'form': form,
+        'section': section,
+        'object': class_time
+    }
+    return render(request, 'courses/time_form.html', context)
+
+@login_required
+@staff_required
+def time_delete(request, pk):
+    """ลบคาบเรียน"""
+    class_time = get_object_or_404(ClassTime, pk=pk)
+    section = class_time.section
+    
+    if request.method == 'POST':
+        class_time.delete()
+        messages.success(request, 'ลบคาบเรียนสำเร็จ')
+        return redirect('courses:time-list', section_pk=section.pk)
+    
+    context = {
+        'object': class_time,
+        'section': section
+    }
+    return render(request, 'courses/time_confirm_delete.html', context)
 
 @login_required
 def my_schedule(request):

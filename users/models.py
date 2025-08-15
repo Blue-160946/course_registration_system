@@ -35,6 +35,12 @@ class Profile(models.Model):
         FEMALE = 'FEMALE', 'หญิง'
         OTHER = 'OTHER', 'อื่นๆ'
         
+    class NameTitle(models.TextChoices):
+        MR = 'MR', 'นาย'
+        MRS = 'MRS', 'นาง'
+        MS = 'MS', 'นางสาว'
+        DR = 'DR', 'ดร.'
+        
     class AcademicTitle(models.TextChoices):
         PROFESSOR = 'PROFESSOR', 'ศาสตราจารย์'
         ASSOCIATE_PROFESSOR = 'ASSOCIATE_PROFESSOR', 'รองศาสตราจารย์'
@@ -44,8 +50,16 @@ class Profile(models.Model):
     class JobTitle(models.TextChoices):
         REGISTRATION_OFFICER = 'REGISTRATION_OFFICER', 'เจ้าหน้าที่ทะเบียน'
 
-    user = models.OneToOneField(User, on_delete=models.CASCADE, primary_key=True, verbose_name="ผู้ใช้")
-    user_type = models.CharField(max_length=10, choices=UserType.choices, default=UserType.STUDENT, verbose_name="ประเภทผู้ใช้")
+    user = models.OneToOneField(
+        User, 
+        on_delete=models.CASCADE, 
+        primary_key=True, 
+        verbose_name="ผู้ใช้")
+    user_type = models.CharField(
+        max_length=10, 
+        choices=UserType.choices, 
+        default=UserType.STUDENT, 
+        verbose_name="ประเภทผู้ใช้")
     
     # Validators
     thai_validator = RegexValidator(
@@ -63,7 +77,13 @@ class Profile(models.Model):
         message='ที่อยู่ต้องเป็นภาษาไทยและอักขระที่กำหนดเท่านั้น'
     )
     
-    #ข้อมูลพื้นฐาน
+    # ข้อมูลพื้นฐาน
+    name_title = models.CharField(
+        max_length=10, 
+        choices=NameTitle.choices, 
+        null=True, 
+        blank=True, 
+        verbose_name="คำนำหน้าชื่อ")
     first_name_th = models.CharField(
         max_length=100,
         validators=[thai_validator],
@@ -74,9 +94,21 @@ class Profile(models.Model):
         validators=[thai_validator], 
         blank=True,
         verbose_name="นามสกุล (ภาษาไทย)")
-    gender = models.CharField(max_length=10, choices=Gender.choices, null=True, blank=True, verbose_name="เพศ")
-    date_of_birth = models.DateField(null=True, blank=True, verbose_name="วันเกิด")
-    phone_number = PhoneNumberField(null=True, blank=True, verbose_name="เบอร์โทรศัพท์", region ='TH')
+    gender = models.CharField(
+        max_length=10, 
+        choices=Gender.choices, 
+        null=True, 
+        blank=True, 
+        verbose_name="เพศ")
+    date_of_birth = models.DateField(
+        null=True, 
+        blank=True, 
+        verbose_name="วันเกิด")
+    phone_number = PhoneNumberField(
+        null=True, 
+        blank=True, 
+        verbose_name="เบอร์โทรศัพท์", 
+        region ='TH')
     address = models.TextField(
         null=True, 
         blank=True, 
@@ -102,17 +134,35 @@ class Profile(models.Model):
         null=True, 
         blank=True, 
         verbose_name="รหัสนิสิต")
-    branch = models.ForeignKey('courses.Branch', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="สาขาวิชา")
-    student_status = models.CharField(max_length=10, choices=StudentStatus.choices, default=StudentStatus.STUDYING, verbose_name="สถานะนิสิต")
+    branch = models.ForeignKey(
+        'courses.Branch', 
+        on_delete=models.SET_NULL, 
+        null=True,
+        blank=True, 
+        verbose_name="สาขาวิชา")
+    student_status = models.CharField(
+        max_length=10, 
+        null=True, 
+        blank=True,
+        choices=StudentStatus.choices,
+        verbose_name="สถานะนิสิต")
     
     # ข้อมูลเพิ่มเติมสำหรับอาจารย์
-    acdemic_title = models.CharField(max_length=50, choices=AcademicTitle.choices, null=True, blank=True, verbose_name="ตำแหน่งทางวิชาการ")
-    department = models.ForeignKey('courses.Department', on_delete=models.SET_NULL, null=True, blank=True, verbose_name="ภาควิชา")
+    acdemic_title = models.CharField(
+        max_length=50, 
+        choices=AcademicTitle.choices, 
+        null=True, 
+        blank=True, 
+        verbose_name="ตำแหน่งทางวิชาการ")
+    department = models.ForeignKey(
+        'courses.Department', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        verbose_name="ภาควิชา")
 
     def clean(self):
-        """
-        Custom validation logic สำหรับ Model ทั้งหมด
-        """
+        
         super().clean()
         
         # 1. ตรวจสอบว่าวันเกิดต้องไม่เป็นวันในอนาคตและไม่เก่าเกินไป

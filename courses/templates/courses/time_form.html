@@ -1,6 +1,6 @@
 {% extends 'core/base.html' %}
 
-{% block title %}{% if object %}แก้ไข{% else %}เพิ่ม{% endif %}รายวิชา{% endblock %}
+{% block title %}เพิ่มคาบเรียน{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -9,17 +9,18 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-orange-gradient text-white py-3">
                     <h2 class="mb-0">
-                        <i class="bi {% if object %}bi-pencil-square{% else %}bi-plus-circle{% endif %} me-2"></i>
-                        {% if object %}แก้ไข{% else %}เพิ่ม{% endif %}รายวิชา
+                        <i class="bi bi-clock me-2"></i>
+                        เพิ่มคาบเรียนสำหรับกลุ่มเรียน: {{ section.section_number }} วิชา {{ section.course.name }}
                     </h2>
                 </div>
                 
                 <div class="card-body p-4">
                     <form method="post" class="needs-validation" novalidate>
                         {% csrf_token %}
+                        {% if form.non_field_errors %}
+                        <div class="alert alert-danger">{{ form.non_field_errors }}</div>
+                        {% endif %}
                         
-                        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
-      
                         <div class="row g-3 mb-4">
                             {% for field in form %}
                             <div class="col-md-6">
@@ -42,14 +43,10 @@
                             </div>
                             {% endfor %}
                         </div>
-                        
-                        <div class="d-flex justify-content-end gap-3">
-                            <a href="{% url 'courses:course-list' %}" class="btn btn-secondary px-4">
-                                <i class="bi bi-x-circle me-1"></i>ยกเลิก
-                            </a>
-                            <button type="submit" class="btn btn-orange px-4">
-                                <i class="bi bi-save me-1"></i>บันทึก
-                            </button>
+
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="{% url 'courses:time-list' section_pk=section.pk %}" class="btn btn-secondary px-4">ย้อนกลับ</a>
+                            <button type="submit" class="btn btn-orange px-4">บันทึก</button>
                         </div>
                     </form>
                 </div>
@@ -57,24 +54,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <style>
-    .bg-orange-gradient {
-        background: linear-gradient(135deg, #fd7e14, #ff9500);
-    }
-    .btn-orange {
-        background-color: #fd7e14;
-        color: white;
-        border: none;
-    }
-    .btn-orange:hover {
-        background-color: #e67e00;
-        color: white;
-    }
-    select.form-control {
-        height: auto;
-        padding: 0.375rem 0.75rem;
-    }
+    .bg-orange-gradient { background: linear-gradient(135deg, #fd7e14, #ff9500); }
+    .btn-orange { background-color: #fd7e14; color: white; border: none; }
+    .btn-orange:hover { background-color: #e67e00; color: white; }
 </style>
-
 {% endblock %}

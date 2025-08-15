@@ -18,11 +18,11 @@ class InstructorChoiceField(forms.ModelMultipleChoiceField):
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ['code', 'name', 'department', 'credits', 'description', 'is_active']
+        fields = ['code', 'name', 'credits', 'department', 'description', 'is_active']
         widgets = {
             'code': forms.TextInput(attrs={
                 'class': 'form-control',
-                'placeholder': 'เช่น 012457'
+                'placeholder': 'เช่น 012345'
             }),
             'name': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -39,9 +39,11 @@ class CourseForm(forms.ModelForm):
                 'class': 'form-control',
                 'placeholder': 'อธิบายรายละเอียดของรายวิชา'
             }),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_active': forms.CheckboxInput(attrs={
+                'class': 'form-check-input'}),
         }
         help_texts = {
+            'department': 'เลือกภาควิชาที่สอนรายวิชานี้',
             'credits': 'จำนวนหน่วยกิต 1-9 หน่วยกิต',
             'is_active': 'เปิด/ปิด การใช้งานรายวิชา'
         }
@@ -51,7 +53,6 @@ class CourseForm(forms.ModelForm):
                 'unique': 'รหัสวิชานี้มีอยู่ในระบบแล้ว',
             },
             'name': {'required': 'กรุณากรอกชื่อวิชา'},
-            'department': {'required': 'กรุณาเลือกภาควิชา'},
             'credits': {
                 'required': 'กรุณากรอกจำนวนหน่วยกิต',
                 'min_value': 'หน่วยกิตต้องไม่น้อยกว่า 1',
@@ -82,12 +83,15 @@ class SectionForm(forms.ModelForm):
     instructors = InstructorChoiceField(
         queryset=User.objects.filter(profile__user_type='INSTRUCTOR'),
         widget=forms.SelectMultiple(attrs={
-            'class': 'form-control select2',
+            'class': 'form-select select2',
             'data-placeholder': 'เลือกอาจารย์ผู้สอน'
         }),
         required=True,
         label="อาจารย์ผู้สอน",
-        help_text="เลือกอาจารย์ผู้สอน"
+        help_text="เลือกอาจารย์ผู้สอนที่รับผิดชอบการสอนในกลุ่มเรียนนี้",
+        error_messages={
+            'required': 'กรุณาเลือกอาจารย์ผู้สอนอย่างน้อย 1 คน'
+        }
     )
     room = forms.ModelChoiceField(
         queryset=Room.objects.all().order_by('building', 'room_number'),
@@ -97,7 +101,10 @@ class SectionForm(forms.ModelForm):
         }),
         required=True,
         label="ห้องเรียน",
-        help_text="เลือกห้องเรียนที่ใช้สอน"
+        help_text="เลือกห้องเรียนที่ใช้จัดการเรียนการสอน",
+        error_messages={
+            'required': 'กรุณาเลือกห้องเรียนอย่างน้อย 1 ห้อง'
+        }
     )
     class Meta:
         model = Section
@@ -112,26 +119,23 @@ class SectionForm(forms.ModelForm):
             }),
             'capacity': forms.NumberInput(attrs={
                 'class': 'form-control',
-                'min': '1',
-                'max': '200',
-                'placeholder': 'จำนวนที่รับ'
+                'placeholder': 'จำนวนที่รับ (1-200)'
             })
         }
         help_texts = {
-            'semester': 'เลือกภาคการศึกษา',
-            'section_number': 'กรอกหมายเลขกลุ่มเรียน (1-99)',
-            'capacity': 'ระบุจำนวนที่รับนิสิต (1-200 คน)',
+            'semester': 'เลือกภาคการศึกษาที่เปิดสอนรายวิชานี้',
+            'section_number': 'กำหนดหมายเลขกลุ่มเรียน (1-99) สำหรับแยกกลุ่มเรียนในรายวิชา',
+            'capacity': 'กำหนดจำนวนนักศึกษาที่รับเข้าในกลุ่มเรียนนี้ (1-200 คน)',
         }
         error_messages = {
             'semester': {'required': 'กรุณาเลือกภาคการศึกษา'},
-            'section_number': {'required': 'กรุณากรอกหมายเลขกลุ่มเรียน'},
+            'section_number': {'required': 'กรุณากรอกหมายเลขกลุ่มเรียน',},
             'room': {'required': 'กรุณาเลือกห้องเรียน'},
             'capacity': {
                 'required': 'กรุณากรอกจำนวนที่รับ',
                 'min_value': 'จำนวนที่รับต้องไม่น้อยกว่า 1 คน',
                 'max_value': 'จำนวนที่รับต้องไม่เกิน 200 คน',
             },
-            'instructors': {'required': 'กรุณาเลือกอาจารย์ผู้สอนอย่างน้อย 1 คน'},
         }
 
     def __init__(self, *args, **kwargs):
@@ -140,8 +144,35 @@ class SectionForm(forms.ModelForm):
         for field_name, field in self.fields.items():
             if not isinstance(field.widget, (forms.CheckboxInput, forms.CheckboxSelectMultiple)):
                 field.widget.attrs.update({'class': 'form-control'})
-
-# Form สำหรับ ClassTime
+                
+    def clean(self):
+        cleaned_data = super().clean()
+        section_number = cleaned_data.get('section_number')
+        semester = cleaned_data.get('semester')
+        
+        
+        if section_number and semester and self.course:
+            # สร้าง query เพื่อตรวจสอบการซ้ำซ้อน
+            qs = Section.objects.filter(
+                course=self.course,
+                semester=semester,
+                section_number=section_number
+            )
+            
+            # ถ้าเป็นการแก้ไข ไม่นับตัวเองในการตรวจสอบ
+            if self.instance.pk:
+                qs = qs.exclude(pk=self.instance.pk)
+            
+            # ถ้ามีการซ้ำ ให้เพิ่ม error
+            if qs.exists():
+                self.add_error(
+                    'section_number',
+                    'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน'
+                )
+        
+        return cleaned_data
+    
+# Form สำหรับคาบเรียน
 class ClassTimeForm(forms.ModelForm):
     class Meta:
         model = ClassTime
@@ -149,84 +180,24 @@ class ClassTimeForm(forms.ModelForm):
         widgets = {
             'day': forms.Select(attrs={
                 'class': 'form-select',
-                'data-placeholder': 'เลือกวัน'
+                'placeholder': 'เลือกวัน'
             }),
             'start_time': forms.TimeInput(attrs={
-                'type': 'time',
                 'class': 'form-control',
+                'type': 'time'
             }),
             'end_time': forms.TimeInput(attrs={
-                'type': 'time',
                 'class': 'form-control',
-            }),
+                'type': 'time'
+            })
         }
         help_texts = {
-            'day': 'เลือกวันที่เรียน',
-            'start_time': 'เวลาเริ่มเรียน (08:00-20:00)',
-            'end_time': 'เวลาเลิกเรียน (09:00-21:00)',
+            'day': 'เลือกวันที่จัดการเรียนการสอน',
+            'start_time': 'เวลาเริ่มต้นคาบเรียน (เช่น 09:00)',
+            'end_time': 'เวลาสิ้นสุดคาบเรียน (เช่น 12:00)'
         }
         error_messages = {
             'day': {'required': 'กรุณาเลือกวัน'},
-            'start_time': {'required': 'กรุณากรอกเวลาเริ่ม'},
-            'end_time': {'required': 'กรุณากรอกเวลาเลิก'},
+            'start_time': {'required': 'กรุณาระบุเวลาเริ่มต้น'},
+            'end_time': {'required': 'กรุณาระบุเวลาสิ้นสุด'}
         }
-        
-    def clean(self):
-        """
-        ตรวจสอบว่าถ้ากรอกข้อมูลในแถวแล้ว ต้องกรอกให้ครบทุกช่อง
-        """
-        cleaned_data = super().clean()
-        
-        # ดึงข้อมูลจากฟอร์ม
-        day = cleaned_data.get('day')
-        start_time = cleaned_data.get('start_time')
-        end_time = cleaned_data.get('end_time')
-
-        # ตรวจสอบว่าฟอร์มนี้ไม่ใช่ฟอร์มเปล่าที่ไม่ได้กรอกอะไรเลย
-        # และไม่ได้ถูกติ๊กเพื่อลบ
-        is_empty = not any([day, start_time, end_time])
-        is_marked_for_deletion = cleaned_data.get('DELETE', False)
-
-        if not is_empty and not is_marked_for_deletion:
-            # ถ้ามีข้อมูลอย่างน้อย 1 ช่อง แต่ไม่ครบทุกช่อง
-            if not all([day, start_time, end_time]):
-                # เพิ่ม Error ให้กับฟิลด์ที่ว่าง
-                if not day:
-                    self.add_error('day', 'กรุณาเลือกวัน')
-                if not start_time:
-                    self.add_error('start_time', 'กรุณากรอกเวลาเริ่ม')
-                if not end_time:
-                    self.add_error('end_time', 'กรุณากรอกเวลาเลิก')
-            
-            # (Optional) ตรวจสอบว่าเวลาเลิกเรียนอยู่หลังเวลาเริ่มเรียน
-            elif end_time <= start_time:
-                self.add_error('end_time', 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน')
-        
-        return cleaned_data
-    
-class BaseClassTimeFormSet(BaseInlineFormSet):
-    def clean(self):
-        super().clean()
-        count = 0
-        for form in self.forms:
-            if form.cleaned_data and not form.cleaned_data.get('DELETE', False):
-                count += 1
-        
-        if count < 1:
-            raise forms.ValidationError('กรุณากรอกข้อมูลคาบเรียนอย่างน้อย 1 คาบเรียน')
-
-# Formset สำหรับ ClassTime
-# สร้าง ClassTimeFormSet โดยใช้ inlineformset_factory
-# Inline Formset ใช้จัดการข้อมูลที่เกี่ยวข้อง (related objects) ของโมเดลหลัก
-ClassTimeFormSet = inlineformset_factory(
-    Section, # โมเดลหลัก (Parent Model): ClassTime จะถูกเชื่อมโยงกับ Section
-    ClassTime, # โมเดลลูก (Child Model): ClassTime คือข้อมูลที่จะถูกจัดการผ่าน Formset นี้
-    form=ClassTimeForm, # ใช้ ClassTimeForm ที่เราสร้างไว้ก่อนหน้านี้สำหรับแต่ละฟอร์มใน Formset
-    formset=BaseClassTimeFormSet, # ใช้ BaseClassTimeFormSet ที่เราสร้างไว้เพื่อจัดการการตรวจสอบความถูกต้อง
-    extra=1, # จำนวนฟอร์มเปล่าเพิ่มเติมที่จะแสดงในหน้า (สำหรับเพิ่มรายการใหม่)
-             # ในที่นี้คือจะแสดงฟอร์มเปล่า 1 ฟอร์มเสมอ
-    can_delete=True, # อนุญาตให้ผู้ใช้สามารถลบรายการ ClassTime ที่มีอยู่ได้
-                     # จะมี checkbox "Delete" ปรากฏขึ้นข้างๆ แต่ละรายการ
-    can_delete_extra=True, # อนุญาตให้ผู้ใช้ลบฟอร์มเปล่าที่ถูกเพิ่มโดย 'extra'
-                          # (ถ้าผู้ใช้เพิ่มฟอร์มเปล่าขึ้นมาแล้วตัดสินใจไม่ใช้ ก็สามารถลบได้)
-)

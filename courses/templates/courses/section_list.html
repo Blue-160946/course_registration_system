@@ -48,7 +48,7 @@
                             </td>
                             <td>{% for instructor in section.instructors.all %}
                                     {% if instructor.profile.get_acdemic_title_display and instructor.profile.first_name_th and instructor.profile.last_name_th %}
-                                        {{ instructor.profile.get_acdemic_title_display }} {{ instructor.profile.first_name_th }} {{ instructor.profile.last_name_th }}
+                                        {{ instructor.profile.get_acdemic_title_display }} {{instructor.profile.get_name_title_display| default:"" }} {{ instructor.profile.first_name_th }} {{ instructor.profile.last_name_th }}
                                     {% else %}
                                         {{ instructor.username }}
                                     {% endif %}
@@ -62,6 +62,9 @@
                                 <div class="btn-group btn-group-sm" role="group">
                                     <a href="{% url 'courses:section-edit' section.pk %}" class="btn btn-outline-warning">
                                         <i class="bi bi-pencil"></i> แก้ไข
+                                    </a>
+                                    <a href="{% url 'courses:time-list' section_pk=section.pk %}" class="btn btn-outline-info">
+                                        <i class="bi bi-clock"></i> จัดการคาบเรียน
                                     </a>
                                     <a href="{% url 'courses:section-delete' section.pk %}" class="btn btn-outline-danger">
                                         <i class="bi bi-trash"></i> ลบ
