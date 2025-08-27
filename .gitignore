@@ -93,7 +93,6 @@ coverage.xml
 .pytest_cache/
 cover/
 .pytest_cache
-pytest.ini
 test-reports/
 coverage-reports/
 
