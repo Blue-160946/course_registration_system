@@ -31,7 +31,7 @@ class SemesterAdmin(admin.ModelAdmin):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ('code', 'name', 'department', 'credits', 'is_active')
+    list_display = ('code', 'name', 'department', 'credits', 'is_active', 'fee')
     list_filter = ('is_active', 'department__faculty', 'department')
     search_fields = ('code', 'name', 'department__name')
     

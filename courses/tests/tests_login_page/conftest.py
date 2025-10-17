@@ -30,6 +30,8 @@ def new_staff(profile_factory):
         job_title='เจ้าหน้าที่',
         user_type=Profile.UserType.STAFF,
         user__is_staff=True,
+        first_name_th='เจ้าหน้าที่',
+        last_name_th='ระบบ',
     )
     return profile.user
 

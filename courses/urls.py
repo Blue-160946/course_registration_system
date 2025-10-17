@@ -20,4 +20,6 @@ urlpatterns = [
     path('register/', views.public_section_list, name='public-section-list'),
     path('enroll/<int:section_pk>/', views.enroll_section, name='enroll-section'),
     path('my-schedule/', views.my_schedule, name='my-schedule'),
+    
+    path('my_schedule/pdf/', views.my_schedule_pdf, name='my-schedule-pdf'),
 ]

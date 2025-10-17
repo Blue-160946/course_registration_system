@@ -4,6 +4,8 @@ from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.forms import ValidationError
 from phonenumber_field.modelfields import PhoneNumberField
+from payment.models import PaymentTransaction
+
 
 '''
 class user models
@@ -223,3 +225,17 @@ class Profile(models.Model):
         if self.first_name_th and self.last_name_th:
             return f"{self.first_name_th} {self.last_name_th}"
         return self.user.username
+    
+    def get_schedule(self, semester=None):
+        """Return a queryset or list of enrolled sections for the semester"""
+        qs = self.user.enrolled_sections.all()  # <-- เปลี่ยนจาก self.enrolled_sections
+        if semester:
+            qs = qs.filter(semester=semester)
+        return qs
+
+    def get_transcript(self):
+        """Return a queryset of completed courses (status = SUCCESS Payment)"""
+        return PaymentTransaction.objects.filter(
+            student=self,
+            status="SUCCESS"
+        ).select_related('course')

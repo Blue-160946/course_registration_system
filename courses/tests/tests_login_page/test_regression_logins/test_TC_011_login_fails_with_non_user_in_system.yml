@@ -1,0 +1,6 @@
+after_login:
+  is_authenticated: false
+  is_staff: false
+  messages:
+  - ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง
+  status_code: 200

@@ -95,6 +95,8 @@ cover/
 .pytest_cache
 test-reports/
 coverage-reports/
+report.html
+assets/style.css
 
 # Jupyter Notebook
 .ipynb_checkpoints
@@ -203,3 +205,6 @@ yarn-error.log*
 *~
 *.bak
 *.tmp
+
+# Allure
+allure-results/

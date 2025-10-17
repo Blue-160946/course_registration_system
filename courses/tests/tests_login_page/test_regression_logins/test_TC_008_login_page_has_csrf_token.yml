@@ -1,0 +1,3 @@
+has_csrf_token: true
+has_form: true
+status_code: 200

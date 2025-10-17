@@ -1,5 +1,6 @@
+from datetime import date, datetime
 from django import forms
-from django.forms import BaseInlineFormSet, inlineformset_factory
+from django.forms import BaseInlineFormSet, ValidationError, inlineformset_factory
 from django.contrib.auth.models import User
 from .models import Course, Section, ClassTime, Room
 
@@ -18,7 +19,7 @@ class InstructorChoiceField(forms.ModelMultipleChoiceField):
 class CourseForm(forms.ModelForm):
     class Meta:
         model = Course
-        fields = ['code', 'name', 'credits', 'department', 'description', 'is_active']
+        fields = ['code', 'name', 'credits', 'department', 'fee','description', 'is_active']
         widgets = {
             'code': forms.TextInput(attrs={
                 'class': 'form-control',
@@ -41,11 +42,16 @@ class CourseForm(forms.ModelForm):
             }),
             'is_active': forms.CheckboxInput(attrs={
                 'class': 'form-check-input'}),
+            'fee': forms.NumberInput(attrs={
+                'class': 'form-control',
+                'placeholder': 'ค่าธรรมเนียม'
+            }),
         }
         help_texts = {
             'department': 'เลือกภาควิชาที่สอนรายวิชานี้',
             'credits': 'จำนวนหน่วยกิต 1-9 หน่วยกิต',
-            'is_active': 'เปิด/ปิด การใช้งานรายวิชา'
+            'is_active': 'เปิด/ปิด การใช้งานรายวิชา',
+            'fee': 'กรุณากรอกค่าธรรมเนียมสำหรับรายวิชา'
         }
         error_messages = {
             'code': {
@@ -149,7 +155,7 @@ class SectionForm(forms.ModelForm):
         cleaned_data = super().clean()
         section_number = cleaned_data.get('section_number')
         semester = cleaned_data.get('semester')
-        
+        room = cleaned_data.get('room')
         
         if section_number and semester and self.course:
             # สร้าง query เพื่อตรวจสอบการซ้ำซ้อน
@@ -169,7 +175,6 @@ class SectionForm(forms.ModelForm):
                     'section_number',
                     'กลุ่มเรียน (Sec) หมายเลขนี้มีอยู่แล้วในรายวิชาและภาคเรียนเดียวกัน'
                 )
-        
         return cleaned_data
     
 # Form สำหรับคาบเรียน
@@ -201,3 +206,82 @@ class ClassTimeForm(forms.ModelForm):
             'start_time': {'required': 'กรุณาระบุเวลาเริ่มต้น'},
             'end_time': {'required': 'กรุณาระบุเวลาสิ้นสุด'}
         }
+        
+    def __init__(self, *args, **kwargs):
+        self.section = kwargs.pop('section', None)  # รับ Section ที่เกี่ยวข้อง
+        super().__init__(*args, **kwargs)
+        
+    def clean(self):
+        """
+        ตรวจสอบความถูกต้องของเวลาการสอนใน Form
+        - end_time ต้องอยู่หลัง start_time
+        - ระยะเวลาเรียนไม่เกิน 2 ชั่วโมง
+        - ตรวจสอบการชนกันของเวลาใน Section, Room และ Instructor
+        """
+        cleaned_data = super().clean()
+        start_time = cleaned_data.get('start_time')
+        end_time = cleaned_data.get('end_time')
+        day = cleaned_data.get('day')
+
+        # ถ้าไม่มีข้อมูลเพียงพอ ให้ข้าม validation
+        if not start_time or not end_time or not day or not self.section:
+            return cleaned_data
+
+        errors = {}
+
+        # 1. ตรวจสอบว่า end_time หลัง start_time
+        if end_time <= start_time:
+            errors['end_time'] = 'เวลาเลิกเรียนต้องอยู่หลังเวลาเริ่มเรียน'
+
+        # 2. ตรวจสอบระยะเวลาไม่เกิน 2 ชั่วโมง
+        duration = (datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)).seconds / 3600
+        if duration > 2:
+            errors['__all__'] = errors.get('__all__', []) + ['ระยะเวลาเรียนต้องไม่เกิน 2 ชั่วโมงต่อคาบ']
+
+        # 3. ตรวจสอบเวลาซ้อนทับกันใน Section/Room/Instructor
+        overlapping_times = ClassTime.objects.filter(
+            section__semester=self.section.semester,
+            day=day
+        ).exclude(id=self.instance.id if self.instance else None)
+
+        for time in overlapping_times:
+            start_existing = time.start_time
+            end_existing = time.end_time
+
+            # ตรวจสอบเวลาซ้อนทับจริง
+            if start_time < end_existing and end_time > start_existing:
+                errors['__all__'] = errors.get('__all__', []) + [
+                    f'เวลาซ้อนทับกัน: {start_time}-{end_time} ทับกับ '
+                    f'{start_existing}-{end_existing} ของวิชา {time.section.course.name} '
+                    f'กลุ่ม {time.section.section_number}'
+                ]
+            # ตรวจสอบเวลาชนขอบพอดี
+            elif start_time == end_existing or end_time == start_existing:
+                errors['__all__'] = errors.get('__all__', []) + [
+                    f'เวลาชนขอบกัน: {start_time}-{end_time} ติดกับ '
+                    f'{start_existing}-{end_existing} ของวิชา {time.section.course.name} '
+                    f'กลุ่ม {time.section.section_number}'
+                ]
+
+            # ตรวจสอบการชนของอาจารย์
+            overlapping_instructors = [
+                instr for instr in self.section.instructors.all()
+                if instr in time.section.instructors.all()
+            ]
+            if overlapping_instructors:
+                names = ", ".join([instr.get_full_name() or instr.username for instr in overlapping_instructors])
+                errors['__all__'] = errors.get('__all__', []) + [
+                    f'อาจารย์ ({names}) มีตารางสอนชนกันกับวิชา {time.section.course.name} '
+                    f'กลุ่ม {time.section.section_number} ช่วงเวลา {start_existing}-{end_existing}'
+                ]
+
+        # 4. เพิ่ม error ทั้งหมด
+        for field, messages in errors.items():
+            if field == '__all__':
+                for message in messages:
+                    self.add_error(None, message)
+            else:
+                for message in messages if isinstance(messages, list) else [messages]:
+                    self.add_error(field, message)
+
+        return cleaned_data
