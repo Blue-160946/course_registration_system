@@ -40,8 +40,8 @@ def staff_login_view(request):
                 messages.error(request, "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
         else:
             messages.error(request, "ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง")
-    
-    form = AuthenticationForm()
+    else:
+        form = AuthenticationForm()
     return render(request, 'users/login.html', {'form': form})
 
 

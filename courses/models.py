@@ -189,8 +189,6 @@ class Course(models.Model):
         on_delete=models.PROTECT, 
         related_name="courses", 
         verbose_name="ภาควิชา", 
-        null=True, 
-        blank=True
     )
     credits = models.PositiveSmallIntegerField(
         default=3,
@@ -226,8 +224,8 @@ class Course(models.Model):
         ]
     )
     description = models.TextField(
-        blank=True, 
-        null=True, 
+        blank=True,
+        null=True,
         verbose_name="คำอธิบายวิชา",
         validators=[
             RegexValidator(
@@ -236,6 +234,11 @@ class Course(models.Model):
             )
         ]
     )
+    fee = models.PositiveSmallIntegerField(
+        verbose_name="ค่าธรรมเนียม",
+        blank=True,
+        null=True,
+        default=0)
 
     def __str__(self):
         return f"{self.code} - {self.name}"
@@ -303,6 +306,24 @@ class Section(models.Model):
         if hasattr(self, 'students'):
             if self.get_enrolled_count() > self.capacity:
                 raise ValidationError('จำนวนนิสิตที่ลงทะเบียนเกินความจุของกลุ่มเรียน')
+            
+        # ตรวจสอบห้องชนกัน
+        if self.room_id and hasattr(self, 'classtime_set'):
+            overlapping = Section.objects.filter(
+                semester=self.semester,
+                room=self.room,
+            ).exclude(pk=self.pk)
+            
+            for section in overlapping:
+                for ct_self in getattr(self, 'classtime_set', []):
+                    for ct_other in section.classtime_set.all():
+                        if ct_self.day == ct_other.day and (
+                            ct_self.start_time < ct_other.end_time and
+                            ct_self.end_time > ct_other.start_time
+                        ):
+                            raise ValidationError({
+                                'non_field_errors': f'ห้อง {self.room} ชนกับ Section {section}'
+                            })
     
     def get_enrolled_count(self):
         return self.students.count()

@@ -26,6 +26,22 @@ def test_TC_001_user_staff_can_login_with_correct(client, new_staff):
     # ตรวจสอบผลลัพธ์
     assert response.status_code == 302  # ต้องมีการ redirect
     
+@pytest.mark.unit_test
+@pytest.mark.django_db
+def test_staff_login_with_valid_credentials_redirects(client, new_staff):
+    """Staff user with valid credentials should log in and redirect to course-list."""
+    login_url = reverse('users:login')
+
+    response = client.post(login_url, {
+        'username': new_staff.username,
+        'password': '123456789',
+    })
+
+    assert response.status_code == 302
+    assert response.url == reverse('courses:course-list')
+    assert '_auth_user_id' in client.session
+    assert client.session['_auth_user_id'] == str(new_staff.pk)
+    
     
 @pytest.mark.unit_test
 @pytest.mark.django_db

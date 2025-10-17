@@ -18,7 +18,12 @@
 
   {% if messages %}
     {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}" role="alert">{{ message }}</div>
+      {% if message.tags == 'warning' %}
+        <div class="alert alert-warning" role="alert">{{ message }}</div>
+      {% endif %}
+      {% if message.tags == 'error' %}
+        <div class="alert alert-danger" role="alert">{{ message }}</div>
+      {% endif %}
     {% endfor %}
   {% endif %}
 
@@ -43,6 +48,7 @@
           <th>วัน-เวลา</th>
           <th>ห้อง</th>
           <th>ผู้สอน</th>
+          <th>ค่าธรรมเนียม</th>
           <th>ดำเนินการ</th>
         </tr>
       </thead>
@@ -76,6 +82,7 @@
                         -
                     {% endfor %}
             </td>
+            <td>{{ section.course.fee }} บาท</td>
             <td>
               {% if request.user in section.students.all %}
                 <span class="badge bg-success">ลงทะเบียนแล้ว</span>

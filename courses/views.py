@@ -7,6 +7,11 @@ from django.utils import timezone
 from django.db.models import Q
 from .models import Course, Section, Semester, ClassTime
 from .forms import CourseForm, SectionForm, ClassTimeForm
+from payment.models import PaymentTransaction
+from payment.payment_gateway import FakePaymentGateway
+from django.http import HttpResponse
+from django.template.loader import render_to_string
+from xhtml2pdf import pisa
 
 # เช็คว่าผู้ใช้เป็น staff ก่อนเข้าถึง view
 def staff_required(view_func):
@@ -174,31 +179,42 @@ def public_section_list(request):
 @login_required
 @require_POST # บังคับให้ view นี้รับเฉพาะ POST request เพื่อความปลอดภัย
 def enroll_section(request, section_pk):
-    
-    #จัดการการลงทะเบียน
-
     section = get_object_or_404(Section, pk=section_pk)
     student = request.user
-
-    # ดึงรายวิชา (Course) ที่นักศึกษากำลังพยายามลงทะเบียน
+    profile = student.profile
     course_to_enroll = section.course
-    # ค้นหากลุ่มเรียน (Sections) ทั้งหมดที่นักศึกษาลงทะเบียนไว้ในปัจจุบัน
-    # และตรวจสอบว่ามีกลุ่มเรียนใดที่อยู่ในรายวิชาเดียวกันหรือไม่
+
+    # ตรวจสอบว่าลงทะเบียนไปแล้วหรือยัง
     if student.enrolled_sections.filter(course=course_to_enroll).exists():
         messages.warning(request, f"คุณได้ลงทะเบียนวิชา {course_to_enroll.name} ไปแล้ว")
         return redirect('courses:public-section-list')
 
-    # ตรวจสอบว่าเต็มหรือยัง
-    if section.is_full():
-        messages.error(request, f"ไม่สามารถลงทะเบียนได้: วิชา {section.course.name} (Sec {section.section_number}) เต็มแล้ว")
-        return redirect('courses:public-section-list')
-
-    # ตรวจสอบว่าลงทะเบียนไปแล้วหรือยัง (สำหรับกลุ่มเรียนนี้โดยเฉพาะ)
     if student in section.students.all():
         messages.warning(request, f"คุณได้ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) ไปแล้ว")
         return redirect('courses:public-section-list')
 
-    # ถ้าผ่านทุกเงื่อนไข ให้ทำการลงทะเบียน
+    # if course_to_enroll.fee > 0:
+        
+    if course_to_enroll.fee > 0:
+        result = FakePaymentGateway.charge(student, course_to_enroll.fee)
+        if not result["success"]:
+            PaymentTransaction.objects.create(
+                student=profile,
+                course=course_to_enroll,
+                amount=course_to_enroll.fee,
+                status="FAILED"
+            )
+            messages.error(request, f"การชำระเงินสำหรับวิชา {course_to_enroll.name} ล้มเหลว")
+            return redirect('courses:public-section-list')
+
+        PaymentTransaction.objects.create(
+            student=profile,
+            course=course_to_enroll,
+            amount=course_to_enroll.fee,
+            status="SUCCESS",
+            transaction_id=result["transaction_id"]
+        )
+    
     section.students.add(student)
     messages.success(request, f"ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) สำเร็จ!")
     return redirect('courses:public-section-list')
@@ -222,23 +238,13 @@ def time_add(request, section_pk):
     section = get_object_or_404(Section, pk=section_pk)
     
     if request.method == 'POST':
-        form = ClassTimeForm(request.POST)
+        form = ClassTimeForm(request.POST, section=section)
         if form.is_valid():
             class_time = form.save(commit=False)
             class_time.section = section
-            
-            # ตรวจสอบการซ้ำซ้อนของเวลา
-            if ClassTime.objects.filter(
-                section=section,
-                day=form.cleaned_data['day'],
-                start_time__lt=form.cleaned_data['end_time'],
-                end_time__gt=form.cleaned_data['start_time']
-            ).exists():
-                form.add_error(None, 'คาบเรียนนี้ซ้ำซ้อนกับคาบเรียนที่มีอยู่แล้ว')
-            else:
-                class_time.save()
-                messages.success(request, 'เพิ่มคาบเรียนสำเร็จ')
-                return redirect('courses:time-list', section_pk=section.pk)
+            class_time.save()
+            messages.success(request, 'เพิ่มคาบเรียนสำเร็จ')
+            return redirect('courses:time-list', section_pk=section.pk)
     else:
         form = ClassTimeForm()
     
@@ -256,7 +262,7 @@ def time_edit(request, pk):
     section = class_time.section
     
     if request.method == 'POST':
-        form = ClassTimeForm(request.POST, instance=class_time)
+        form = ClassTimeForm(request.POST, instance=class_time, section=section)
         if form.is_valid():
             # ตรวจสอบการซ้ำซ้อนของเวลา (ไม่นับตัวเอง)
             if ClassTime.objects.filter(
@@ -313,3 +319,31 @@ def my_schedule(request):
         'current_semester': current_semester,
     }
     return render(request, 'courses/my_schedule.html', context)
+
+@login_required
+def my_schedule_pdf(request):
+    user = request.user
+    current_date = timezone.now().date()
+    current_semester = Semester.objects.filter(
+        start_date__lte=current_date,
+        end_date__gte=current_date
+    ).first()
+
+    enrolled_sections = []
+    if current_semester:
+        enrolled_sections = user.profile.get_schedule(current_semester)
+
+    html = render_to_string('courses/my_schedule_pdf.html', {
+        'user': user,
+        'enrolled_sections': enrolled_sections,
+        'current_semester': current_semester,
+    })
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="schedule_{user.username}.pdf"'
+
+    pisa_status = pisa.CreatePDF(html, dest=response)
+    if pisa_status.err:
+        return HttpResponse(f'เกิดข้อผิดพลาดในการสร้าง PDF <pre>{html}</pre>')
+
+    return response
