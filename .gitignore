@@ -208,3 +208,8 @@ yarn-error.log*
 
 # Allure
 allure-results/
+
+# Robot Framework generated files
+output.xml
+log.html
+report.html

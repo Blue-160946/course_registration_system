@@ -17,8 +17,9 @@ Click menu view data
     Sleep    3s
 
 Click Student Detail By ID
- 
-    Wait Until Element Is Visible    xpath=//tr[td[normalize-space(text())='${653211}']]//a[contains(., 'ดูรายละเอียด')]    timeout=10s
-    Scroll Element Into View         xpath=//tr[td[normalize-space(text())='${653211}']]//a[contains(., 'ดูรายละเอียด')]
-    Click Element                    xpath=//tr[td[normalize-space(text())='${653211}']]//a[contains(., 'ดูรายละเอียด')]
-    Sleep    2s
+    [Arguments]    ${student_id}
+    ${detail_xpath}=    Set Variable    //tr[td[normalize-space()='${student_id}']]//a[contains(., 'ดูรายละเอียด')]
+    Wait Until Element Is Visible    xpath=${detail_xpath}    timeout=10s
+    Scroll Element Into View    xpath=${detail_xpath}
+    Click Element    xpath=${detail_xpath}
+    Wait Until Page Contains    รายละเอียดนิสิต    10s

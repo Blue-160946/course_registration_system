@@ -17,7 +17,7 @@ Add Subject With Random Data
     ${random_code}=    Evaluate    'CS' + str(__import__('random').randint(100, 999))
     ${random_credits}=    Evaluate    __import__('random').randint(1, 6)
     ${subjects}=    Create List    การเขียนโปรแกรมเบื้องต้น    โครงสร้างข้อมูล    ฐานข้อมูล    เครือข่าย    ปัญญาประดิษฐ์    การพัฒนาเว็บ
-    ${departments}=    Create List    วิทยาการคอมพิวเตอร์    วิศวกรรมคอมพิวเตอร์    เทคโนโลยีสารสนเทศ
+    ${departments}=    Create List    วิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ    ชีวะ    เคมี
     ${descriptions}=    Create List    วิชานี้สอนพื้นฐานการเขียนโปรแกรม    เรียนรู้โครงสร้างข้อมูลและอัลกอริทึม    ศึกษาการจัดการฐานข้อมูล    เรียนรู้เกี่ยวกับเครือข่ายคอมพิวเตอร์
     
     ${random_subject}=    Evaluate    __import__('random').choice($subjects)
@@ -44,13 +44,16 @@ Add Subject With Custom Data
     [Arguments]    ${code}    ${name}    ${department}    ${credits}    ${description}
     
     Wait Until Element Is Visible    xpath=/html/body/main/div/div[1]/a    timeout=10s
-    Click Element                    xpath=/html/body/main/div/div[1]/a
+    Click Element     
+    ...               xpath=/html/body/main/div/div[1]/a
     Wait Until Element Is Visible    xpath=/html/body/main/div/div/div    timeout=10s
     
     # รหัสวิชา
     Input Text    id=id_code    ${code}
     # ชื่อวิชา
     Input Text    id=id_name    ${name}
+
+    Wait Until Element Is Visible    id=id_department    10s
     # เลือกภาควิชา
     Select From List By Label    id=id_department    ${department}
     # หน่วยกิต
