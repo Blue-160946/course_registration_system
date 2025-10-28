@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: DejaVu Sans, sans-serif; }
+        h2 { text-align: center; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #333; padding: 5px; text-align: center; font-size: 12px; }
+        th { background-color: #eee; }
+    </style>
+</head>
+<body>
+    <h2>ตารางเรียนของ {{ user.get_full_name }}</h2>
+    {% if current_semester %}
+        <p style="text-align:center;">ภาคเรียน {{ current_semester.get_semester_display }} ปีการศึกษา {{ current_semester.year }}</p>
+    {% else %}
+        <p style="text-align:center;">ยังไม่มีภาคเรียนปัจจุบัน</p>
+    {% endif %}
+
+    <table>
+        <thead>
+            <tr>
+                <th>รหัสวิชา</th>
+                <th>ชื่อวิชา</th>
+                <th>กลุ่ม</th>
+                <th>วัน-เวลา</th>
+                <th>ห้อง</th>
+                <th>ผู้สอน</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for section in enrolled_sections %}
+            <tr>
+                <td>{{ section.course.code }}</td>
+                <td>{{ section.course.name }}</td>
+                <td>{{ section.section_number }}</td>
+                <td>
+                    {% for ct in section.class_times.all %}
+                        {{ ct.get_day_display }} {{ ct.start_time|time:"H:i" }} - {{ ct.end_time|time:"H:i" }}
+                        {% if not forloop.last %}<br>{% endif %}
+                    {% empty %}-{% endfor %}
+                </td>
+                <td>{{ section.room|default:"-" }}</td>
+                <td>
+                    {% for instructor in section.instructors.all %}
+                        {% if instructor.profile.get_acdemic_title_display and instructor.profile.first_name_th and instructor.profile.last_name_th %}
+                            {{ instructor.profile.get_acdemic_title_display }} {{ instructor.profile.first_name_th }} {{ instructor.profile.last_name_th }}
+                        {% else %}
+                            {{ instructor.username }}
+                        {% endif %}
+                        {% if not forloop.last %}<br>{% endif %}
+                    {% empty %}-{% endfor %}
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="6" style="text-align:center;">คุณยังไม่ได้ลงทะเบียนเรียนในภาคเรียนนี้</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

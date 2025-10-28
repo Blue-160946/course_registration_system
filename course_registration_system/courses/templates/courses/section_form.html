@@ -1,0 +1,89 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{% if object %}แก้ไข{% else %}เพิ่ม{% endif %}กลุ่มเรียน{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-orange-gradient text-white py-3">
+                    <h2 class="mb-0">
+                        <i class="bi {% if object %}bi-pencil-square{% else %}bi-plus-circle{% endif %} me-2"></i>
+                        {% if object %}แก้ไข{% else %}เพิ่ม{% endif %}กลุ่มเรียนสำหรับวิชา: {{ course.name }}
+                    </h2>
+                </div>
+                
+                <div class="card-body p-4">
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+                        
+                        <div class="row g-3 mb-4">
+                            {% for field in form %}
+                            <div class="col-md-6">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }} {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ field }}
+                                {% if field.help_text %}
+                                <div class="form-text text-muted small">
+                                    <i class="bi bi-info-circle-fill"></i> {{ field.help_text }}
+                                </div>
+                                {% endif %}
+                                {% if field.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in field.errors %}
+                                    <div><i class="bi bi-exclamation-circle"></i> {{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% endfor %}
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-3 mt-4">
+                            <a href="{% url 'courses:section-list' course.pk %}" class="btn btn-secondary px-4">ยกเลิก</a>
+                            <button type="submit" class="btn btn-orange px-4">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .bg-orange-gradient { background: linear-gradient(135deg, #fd7e14, #ff9500); }
+    .btn-orange { background-color: #fd7e14; color: white; border: none; }
+    .btn-orange:hover { background-color: #e67e00; color: white; }
+    
+    /* สไตล์สำหรับการแสดงผลคาบเรียน */
+    .class-time-row {
+        transition: all 0.3s ease;
+        opacity: 1;
+    }
+    .class-time-row.fading-out {
+        opacity: 0;
+    }
+    .class-time-row button[disabled] {
+        cursor: not-allowed;
+    }
+
+</style>
+
+<script>
+
+    // jQuery Plugins
+    $(document).ready(function() {
+        // Initialize Select2 for instructors
+        $('#id_instructors').select2({
+            theme: "bootstrap-5",
+            placeholder: "เลือกอาจารย์ผู้สอน",
+        });
+    });
+    
+</script>
+{% endblock %}

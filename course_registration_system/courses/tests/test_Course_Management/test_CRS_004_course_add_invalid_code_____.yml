@@ -1,0 +1,6 @@
+bad_code: '   '
+form_errors:
+  code:
+  - กรุณากรอกรหัสวิชา
+form_valid: false
+status_code: 200

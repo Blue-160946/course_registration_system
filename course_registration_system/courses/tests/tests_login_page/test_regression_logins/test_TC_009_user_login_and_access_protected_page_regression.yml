@@ -1,0 +1,8 @@
+after_login:
+  is_authenticated: true
+  is_staff: true
+  redirect_url: /manage/courses/
+  status_code: 302
+before_login:
+  redirect_url: /users/login/?next=/manage/courses/
+  status_code: 302

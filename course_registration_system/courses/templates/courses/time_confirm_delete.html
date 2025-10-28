@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+
+{% block title %}ลบคาบเรียน{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-danger text-white py-3">
+                    <h2 class="mb-0">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        ยืนยันการลบคาบเรียน
+                    </h2>
+                </div>
+                <div class="card-body p-4">
+                    <p class="lead mb-4">
+                        คุณแน่ใจหรือไม่ที่จะลบคาบเรียน<br>
+                        <strong>{{ object.get_day_display }}</strong> เวลา <strong>{{ object.start_time|time:"H:i" }} - {{ object.end_time|time:"H:i" }}</strong>
+                        <br>จากกลุ่มเรียน: {{ section.section_number }} วิชา {{ section.course.name }}?
+                    </p>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="d-flex justify-content-end gap-3">
+                            <a href="{% url 'courses:time-list' section_pk=section.pk %}" class="btn btn-secondary px-4">
+                                ยกเลิก
+                            </a>
+                            <button type="submit" class="btn btn-danger px-4">
+                                <i class="bi bi-trash me-1"></i> ลบคาบเรียน
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

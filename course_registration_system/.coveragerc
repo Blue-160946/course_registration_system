@@ -1,0 +1,14 @@
+[run]
+branch = True
+source =
+    core
+    courses
+    payment
+    users
+
+[html]
+show_contexts = True
+
+[report]
+fail_under = 85
+show_missing = True

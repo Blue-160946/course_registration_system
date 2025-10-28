@@ -1,0 +1,334 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot generator="Robot 7.0 (Python 3.8.20 on darwin)" generated="2025-10-28T01:03:31.220635" rpa="false" schemaversion="5">
+<suite id="s1" name="System E2E" source="/Users/sajjaphat/Desktop/Project/automation_register/tests/system_e2e.robot">
+<test id="s1-t1" name="TC-100 E2E: ผู้ดูแลเพิ่ม-แก้ไข-ลบรายวิชาได้สำเร็จ" line="23">
+<kw name="Open Admin Session">
+<kw name="Open browser" owner="login">
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-10-28T01:03:31.344442" level="INFO">${prefs} = {'profile.default_content_setting_values.media_stream_camera': '1', 'profile.default_content_setting_values.media_stream_microphone': '1'}</msg>
+<var>${prefs}</var>
+<arg>profile.default_content_setting_values.media_stream_camera=1</arg>
+<arg>profile.default_content_setting_values.media_stream_microphone=1</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.344201" elapsed="0.001288"/>
+</kw>
+<kw name="Evaluate" owner="BuiltIn">
+<msg time="2025-10-28T01:03:31.346222" level="INFO">${options} = &lt;selenium.webdriver.chrome.options.Options object at 0x103b45130&gt;</msg>
+<var>${options}</var>
+<arg>sys.modules['selenium.webdriver'].ChromeOptions()</arg>
+<arg>sys, selenium.webdriver</arg>
+<doc>Evaluates the given expression in Python and returns the result.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.345762" elapsed="0.000714"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<arg>${options}</arg>
+<arg>add_experimental_option</arg>
+<arg>prefs</arg>
+<arg>${prefs}</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.346708" elapsed="0.000719"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<arg>${options}</arg>
+<arg>add_argument</arg>
+<arg>--use-fake-ui-for-media-stream</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.347557" elapsed="0.000139"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<arg>${options}</arg>
+<arg>add_argument</arg>
+<arg>--use-fake-device-for-media-stream</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.347795" elapsed="0.000198"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<arg>${options}</arg>
+<arg>add_argument</arg>
+<arg>--fake-video-capture-device</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.348282" elapsed="0.000191"/>
+</kw>
+<kw name="Call Method" owner="BuiltIn">
+<arg>${options}</arg>
+<arg>add_argument</arg>
+<arg>--fake-audio-capture-device</arg>
+<doc>Calls the named method of the given object with the provided arguments.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.348583" elapsed="0.000183"/>
+</kw>
+<kw name="Create Webdriver" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:31.349023" level="INFO">Creating an instance of the Chrome WebDriver.</msg>
+<arg>Chrome</arg>
+<arg>options=${options}</arg>
+<doc>Creates an instance of Selenium WebDriver.</doc>
+<status status="PASS" start="2025-10-28T01:03:31.348872" elapsed="0.775257"/>
+</kw>
+<kw name="Maximize Browser Window" owner="SeleniumLibrary">
+<doc>Maximizes current browser window.</doc>
+<status status="PASS" start="2025-10-28T01:03:32.124763" elapsed="0.362269"/>
+</kw>
+<kw name="Go To" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:32.487602" level="INFO">Opening url 'http://127.0.0.1:8000/'</msg>
+<arg>${URL}</arg>
+<doc>Navigates the current browser window to the provided ``url``.</doc>
+<status status="PASS" start="2025-10-28T01:03:32.487341" elapsed="0.326481"/>
+</kw>
+<status status="PASS" start="2025-10-28T01:03:31.343606" elapsed="1.470705"/>
+</kw>
+<kw name="Login" owner="login">
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2025-10-28T01:03:34.817381" level="INFO">Slept 2 seconds.</msg>
+<arg>2s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2025-10-28T01:03:32.815988" elapsed="2.001831"/>
+</kw>
+<kw name="Click Element" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:34.819148" level="INFO">Clicking element '//*[@id="navbarNav"]/ul[2]/li/a'.</msg>
+<arg>//*[@id="navbarNav"]/ul[2]/li/a</arg>
+<doc>Click the element identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:34.818211" elapsed="0.138089"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2025-10-28T01:03:35.958924" level="INFO">Slept 1 second.</msg>
+<arg>1s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2025-10-28T01:03:34.956754" elapsed="1.002869"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:35.961745" level="INFO">Typing text 'admin' into text field 'id=id_username'.</msg>
+<arg>id=id_username</arg>
+<arg>${username}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:35.960249" elapsed="0.108812"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2025-10-28T01:03:37.071122" level="INFO">Slept 1 second.</msg>
+<arg>1s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2025-10-28T01:03:36.069344" elapsed="1.002480"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:37.073478" level="INFO">Typing text '12345678' into text field 'id=id_password'.</msg>
+<arg>id=id_password</arg>
+<arg>${password}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:37.072671" elapsed="0.051714"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>xpath=//form//button[@type="submit"]</arg>
+<arg>timeout=10s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2025-10-28T01:03:37.124724" elapsed="0.013077"/>
+</kw>
+<kw name="Click Element" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:37.138235" level="INFO">Clicking element 'xpath=//form//button[@type="submit"]'.</msg>
+<arg>xpath=//form//button[@type="submit"]</arg>
+<doc>Click the element identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:37.138036" elapsed="0.362887"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.503874" level="INFO">Slept 3 seconds.</msg>
+<arg>3s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="PASS" start="2025-10-28T01:03:37.501310" elapsed="3.003268"/>
+</kw>
+<arg>${ADMIN_USER}</arg>
+<arg>${ADMIN_PASS}</arg>
+<arg>True</arg>
+<status status="PASS" start="2025-10-28T01:03:32.815513" elapsed="7.689462"/>
+</kw>
+<status status="PASS" start="2025-10-28T01:03:31.343177" elapsed="9.162038"/>
+</kw>
+<kw name="Generate Unique Subject Data">
+<kw name="Evaluate" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.508182" level="INFO">${code} = CS2810</msg>
+<var>${code}</var>
+<arg>'CS' + str(__import__("random").randint(1000, 9999))</arg>
+<doc>Evaluates the given expression in Python and returns the result.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.507232" elapsed="0.001945"/>
+</kw>
+<kw name="Evaluate" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.511565" level="INFO">${name} = Automation Course 822</msg>
+<var>${name}</var>
+<arg>'Automation Course ' + str(__import__("random").randint(100, 999))</arg>
+<doc>Evaluates the given expression in Python and returns the result.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.509812" elapsed="0.002481"/>
+</kw>
+<kw name="Evaluate" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.518004" level="INFO">${credits} = 2</msg>
+<var>${credits}</var>
+<arg>str(__import__("random").randint(1, 4))</arg>
+<doc>Evaluates the given expression in Python and returns the result.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.513878" elapsed="0.004499"/>
+</kw>
+<kw name="Set Variable" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.519881" level="INFO">${description} = วิชาทดสอบสำหรับอัตโนมัติ</msg>
+<var>${description}</var>
+<arg>วิชาทดสอบสำหรับอัตโนมัติ</arg>
+<doc>Returns the given values which can then be assigned to a variables.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.519324" elapsed="0.000850"/>
+</kw>
+<kw name="Create Dictionary" owner="BuiltIn">
+<msg time="2025-10-28T01:03:40.521214" level="INFO">&amp;{subject} = { code=CS2810 | name=Automation Course 822 | credits=2 | description=วิชาทดสอบสำหรับอัตโนมัติ }</msg>
+<var>&amp;{subject}</var>
+<arg>code=${code}</arg>
+<arg>name=${name}</arg>
+<arg>credits=${credits}</arg>
+<arg>description=${description}</arg>
+<doc>Creates and returns a dictionary based on the given ``items``.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.520489" elapsed="0.000879"/>
+</kw>
+<return>
+<value>${subject}</value>
+<status status="PASS" start="2025-10-28T01:03:40.521543" elapsed="0.000200"/>
+</return>
+<msg time="2025-10-28T01:03:40.521988" level="INFO">${subject} = {'code': 'CS2810', 'name': 'Automation Course 822', 'credits': '2', 'description': 'วิชาทดสอบสำหรับอัตโนมัติ'}</msg>
+<var>${subject}</var>
+<status status="PASS" start="2025-10-28T01:03:40.506272" elapsed="0.015838"/>
+</kw>
+<kw name="Add Subject With Custom Data" owner="addsubject">
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>xpath=/html/body/main/div/div[1]/a</arg>
+<arg>timeout=10s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.528756" elapsed="0.016520"/>
+</kw>
+<kw name="Click Element" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:40.545907" level="INFO">Clicking element 'xpath=/html/body/main/div/div[1]/a'.</msg>
+<arg>xpath=/html/body/main/div/div[1]/a</arg>
+<doc>Click the element identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.545621" elapsed="0.121688"/>
+</kw>
+<kw name="Wait Until Element Is Visible" owner="SeleniumLibrary">
+<arg>xpath=/html/body/main/div/div/div</arg>
+<arg>timeout=10s</arg>
+<doc>Waits until the element ``locator`` is visible.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.667630" elapsed="0.018792"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:40.686919" level="INFO">Typing text 'CS2810' into text field 'id=id_code'.</msg>
+<arg>id=id_code</arg>
+<arg>${code}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.686671" elapsed="0.032344"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:40.719461" level="INFO">Typing text 'Automation Course 822' into text field 'id=id_name'.</msg>
+<arg>id=id_name</arg>
+<arg>${name}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.719249" elapsed="0.036723"/>
+</kw>
+<kw name="Select From List By Label" owner="SeleniumLibrary">
+<msg time="2025-10-28T01:03:40.756453" level="INFO">Selecting options from selection list 'id=id_department' by label วิทยาการณ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ.</msg>
+<msg time="2025-10-28T01:03:40.934339" level="INFO" html="true">&lt;/td&gt;&lt;/tr&gt;&lt;tr&gt;&lt;td colspan="3"&gt;&lt;a href="selenium-screenshot-94.png"&gt;&lt;img src="selenium-screenshot-94.png" width="800px"&gt;&lt;/a&gt;</msg>
+<msg time="2025-10-28T01:03:40.934553" level="FAIL">NoSuchElementException: Message: Could not locate element with visible text: วิทยาการณ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+</msg>
+<arg>id=id_department</arg>
+<arg>${department}</arg>
+<doc>Selects options from selection list ``locator`` by ``labels``.</doc>
+<status status="FAIL" start="2025-10-28T01:03:40.756206" elapsed="0.180846">NoSuchElementException: Message: Could not locate element with visible text: วิทยาการณ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+</status>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<arg>id=id_credits</arg>
+<arg>${credits}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.937304" elapsed="0.000082"/>
+</kw>
+<kw name="Input Text" owner="SeleniumLibrary">
+<arg>id=id_description</arg>
+<arg>${description}</arg>
+<doc>Types the given ``text`` into the text field identified by ``locator``.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.937490" elapsed="0.000050"/>
+</kw>
+<kw name="Checkbox Should Be Selected" owner="SeleniumLibrary">
+<arg>id=id_is_active</arg>
+<doc>Verifies checkbox ``locator`` is selected/checked.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.937630" elapsed="0.000046"/>
+</kw>
+<kw name="Click Button" owner="SeleniumLibrary">
+<arg>xpath=//button[@type='submit' and contains(., 'บันทึก')]</arg>
+<doc>Clicks the button identified by ``locator``.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.937757" elapsed="0.000048"/>
+</kw>
+<kw name="Sleep" owner="BuiltIn">
+<arg>3s</arg>
+<doc>Pauses the test executed for the given time.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.937881" elapsed="0.000040"/>
+</kw>
+<arg>${subject['code']}</arg>
+<arg>${subject['name']}</arg>
+<arg>${SUBJECT_DEPARTMENT}</arg>
+<arg>${subject['credits']}</arg>
+<arg>${subject['description']}</arg>
+<doc>กรอกข้อมูลวิชาใหม่ด้วยข้อมูลที่กำหนด</doc>
+<status status="FAIL" start="2025-10-28T01:03:40.524092" elapsed="0.413910">NoSuchElementException: Message: Could not locate element with visible text: วิทยาการณ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+</status>
+</kw>
+<kw name="Verify Subject Row Should Exist">
+<arg>${subject['code']}</arg>
+<arg>${subject['name']}</arg>
+<status status="NOT RUN" start="2025-10-28T01:03:40.938235" elapsed="0.000059"/>
+</kw>
+<kw name="Generate Edited Subject Data">
+<var>${edited}</var>
+<arg>${subject['code']}</arg>
+<status status="NOT RUN" start="2025-10-28T01:03:40.938626" elapsed="0.000074"/>
+</kw>
+<kw name="Open Subject Edit Form By Course Code" owner="editsubject">
+<arg>${subject['code']}</arg>
+<doc>เปิดหน้าฟอร์มแก้ไขโดยอ้างอิงรหัสวิชา</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.939124" elapsed="0.000072"/>
+</kw>
+<kw name="Fill Subject Edit Form" owner="editsubject">
+<arg>${edited['code']}</arg>
+<arg>${edited['name']}</arg>
+<arg>${SUBJECT_DEPARTMENT}</arg>
+<arg>${edited['credits']}</arg>
+<arg>${edited['description']}</arg>
+<doc>กรอกข้อมูลลงในฟอร์มแก้ไขวิชาและบันทึก</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.939643" elapsed="0.000181"/>
+</kw>
+<kw name="Verify Subject Row Should Exist">
+<arg>${edited['code']}</arg>
+<arg>${edited['name']}</arg>
+<status status="NOT RUN" start="2025-10-28T01:03:40.940119" elapsed="0.000127"/>
+</kw>
+<kw name="Delete Course By Code" owner="delsubject">
+<arg>${edited['code']}</arg>
+<status status="NOT RUN" start="2025-10-28T01:03:40.940639" elapsed="0.000068"/>
+</kw>
+<kw name="Verify Subject Row Should Not Exist">
+<arg>${edited['code']}</arg>
+<status status="NOT RUN" start="2025-10-28T01:03:40.940889" elapsed="0.000068"/>
+</kw>
+<kw name="Close All Browsers" owner="SeleniumLibrary">
+<doc>Closes all open browsers and resets the browser cache.</doc>
+<status status="NOT RUN" start="2025-10-28T01:03:40.941200" elapsed="0.000056"/>
+</kw>
+<doc>ครอบคลุมการเพิ่ม แก้ไข และลบรายวิชาบนระบบสำหรับบทบาทผู้ดูแล</doc>
+<status status="FAIL" start="2025-10-28T01:03:31.341568" elapsed="9.599916">NoSuchElementException: Message: Could not locate element with visible text: วิทยาการณ์คอมพิวเตอร์และเทคโนโลยีสารสนเทศ; For documentation on this error, please visit: https://www.selenium.dev/documentation/webdriver/troubleshooting/errors#no-such-element-exception
+</status>
+</test>
+<kw name="Close All Browsers" owner="SeleniumLibrary" type="TEARDOWN">
+<doc>Closes all open browsers and resets the browser cache.</doc>
+<status status="PASS" start="2025-10-28T01:03:40.942947" elapsed="0.084983"/>
+</kw>
+<status status="FAIL" start="2025-10-28T01:03:31.222617" elapsed="9.805744"/>
+</suite>
+<statistics>
+<total>
+<stat pass="0" fail="1" skip="0">All Tests</stat>
+</total>
+<tag>
+</tag>
+<suite>
+<stat pass="0" fail="1" skip="0" id="s1" name="System E2E">System E2E</stat>
+</suite>
+</statistics>
+<errors>
+<msg time="2025-10-28T01:03:31.217495" level="WARN">Error in file '/Users/sajjaphat/Desktop/Project/automation_register/tests/system_e2e.robot' on line 72: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+<msg time="2025-10-28T01:03:31.217598" level="WARN">Error in file '/Users/sajjaphat/Desktop/Project/automation_register/tests/system_e2e.robot' on line 81: The '[Return]' setting is deprecated. Use the 'RETURN' statement instead.</msg>
+</errors>
+</robot>
