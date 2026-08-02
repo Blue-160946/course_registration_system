@@ -1,6 +1,9 @@
 import pytest
+from datetime import timedelta
 from django.urls import reverse
-from courses.models import Section
+from django.utils import timezone
+from django.test import override_settings
+from courses.models import Section, Semester
 from payment.models import PaymentTransaction
 from courses.tests.test_enrollment.factories import SectionFactory, ProfileFactory, CourseFactory
 from django.contrib.messages import get_messages
@@ -62,6 +65,7 @@ def test_enroll_duplicate_section(client):
 #     assert section.students.count() == 1
 
 @pytest.mark.django_db
+@override_settings(PAYMENT_GATEWAY_MODE='fake')
 def test_enroll_paid_course_success(client):
     # สร้าง user และ login
     profile = ProfileFactory(user_type='STUDENT')
@@ -106,6 +110,7 @@ def test_enroll_paid_course_success(client):
         courses.views.FakePaymentGateway = original_gateway
 
 @pytest.mark.django_db
+@override_settings(PAYMENT_GATEWAY_MODE='fake')
 def test_enroll_paid_course_fail_payment(client):
     profile = ProfileFactory(user_type='STUDENT')
     user = profile.user
@@ -145,3 +150,117 @@ def test_enroll_paid_course_fail_payment(client):
 
     finally:
         courses.views.FakePaymentGateway = original_gateway
+
+
+@pytest.mark.django_db
+def test_enroll_full_section_is_rejected(client):
+    student_profile = ProfileFactory(user_type='STUDENT')
+    section = SectionFactory(capacity=1)
+    another_student = ProfileFactory(user_type='STUDENT')
+    section.students.add(another_student.user)
+
+    client.force_login(student_profile.user)
+    response = client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': section.pk})
+    )
+
+    assert response.status_code == 302
+    section.refresh_from_db()
+    assert student_profile.user not in section.students.all()
+    assert section.students.count() == 1
+
+
+@pytest.mark.django_db
+def test_enroll_inactive_course_is_rejected(client):
+    student_profile = ProfileFactory(user_type='STUDENT')
+    course = CourseFactory(is_active=False)
+    section = SectionFactory(course=course)
+
+    client.force_login(student_profile.user)
+    response = client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': section.pk})
+    )
+
+    assert response.status_code == 302
+    assert student_profile.user not in section.students.all()
+
+
+@pytest.mark.django_db
+def test_enroll_non_current_semester_is_rejected(client):
+    student_profile = ProfileFactory(user_type='STUDENT')
+    section = SectionFactory()
+    section.semester.start_date = timezone.localdate() + timedelta(days=30)
+    section.semester.end_date = timezone.localdate() + timedelta(days=210)
+    section.semester.save(update_fields=['start_date', 'end_date'])
+
+    client.force_login(student_profile.user)
+    response = client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': section.pk})
+    )
+
+    assert response.status_code == 302
+    assert student_profile.user not in section.students.all()
+
+
+@pytest.mark.django_db
+def test_non_student_cannot_access_student_features(client):
+    instructor_profile = ProfileFactory(
+        user_type='INSTRUCTOR',
+        student_id=None,
+        branch=None,
+    )
+    section = SectionFactory()
+    client.force_login(instructor_profile.user)
+
+    assert client.get(reverse('courses:public-section-list')).status_code == 403
+    assert client.get(reverse('courses:my-schedule')).status_code == 403
+    assert client.get(reverse('courses:my-schedule-pdf')).status_code == 403
+    assert client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': section.pk})
+    ).status_code == 403
+
+
+@pytest.mark.django_db
+def test_same_course_can_be_enrolled_in_a_new_semester(client):
+    student_profile = ProfileFactory(user_type='STUDENT')
+    current_section = SectionFactory()
+    previous_semester = Semester.objects.create(
+        year=current_section.semester.year - 1,
+        semester=2,
+        start_date=timezone.localdate() - timedelta(days=300),
+        end_date=timezone.localdate() - timedelta(days=120),
+    )
+    previous_section = SectionFactory(
+        course=current_section.course,
+        semester=previous_semester,
+        section_number='2',
+    )
+    previous_section.students.add(student_profile.user)
+
+    client.force_login(student_profile.user)
+    response = client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': current_section.pk})
+    )
+
+    assert response.status_code == 302
+    assert student_profile.user in current_section.students.all()
+
+
+@pytest.mark.django_db
+@override_settings(PAYMENT_GATEWAY_MODE='disabled')
+def test_paid_course_is_rejected_when_real_payment_is_not_configured(client):
+    student_profile = ProfileFactory(user_type='STUDENT')
+    course = CourseFactory(fee=500)
+    section = SectionFactory(course=course)
+
+    client.force_login(student_profile.user)
+    response = client.post(
+        reverse('courses:enroll-section', kwargs={'section_pk': section.pk})
+    )
+
+    assert response.status_code == 302
+    assert student_profile.user not in section.students.all()
+    assert not PaymentTransaction.objects.filter(
+        student=student_profile,
+        course=course,
+    ).exists()

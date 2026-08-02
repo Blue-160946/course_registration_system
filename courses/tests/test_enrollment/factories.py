@@ -1,4 +1,6 @@
 import factory
+from datetime import timedelta
+from django.utils import timezone
 from users.models import Profile
 from django.contrib.auth.models import User
 from courses.models import Faculty, Department, Branch, Course, Section, Semester, Room
@@ -27,10 +29,10 @@ class BranchFactory(factory.django.DjangoModelFactory):
 class SemesterFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Semester
-    year = 2568
+    year = factory.LazyFunction(lambda: timezone.localdate().year + 543)
     semester = 1
-    start_date = "2025-06-01"
-    end_date = "2025-11-30"
+    start_date = factory.LazyFunction(lambda: timezone.localdate() - timedelta(days=90))
+    end_date = factory.LazyFunction(lambda: timezone.localdate() + timedelta(days=90))
 
 # ---------------- Room ----------------
 class RoomFactory(factory.django.DjangoModelFactory):

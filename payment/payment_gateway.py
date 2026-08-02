@@ -1,10 +1,9 @@
-import random
-
 class FakePaymentGateway:
     """
-    Mock Payment Gateway แบบง่าย ๆ
-    - ทุกวิชาฟรี (fee=0) จะ fail เพื่อสาธิต regression
-    - ทุกวิชาที่มีค่าใช้จ่าย (fee>0) จะ success
+    Payment gateway สำหรับการพัฒนาและทดสอบเท่านั้น
+
+    ต้องตั้ง PAYMENT_GATEWAY_MODE=fake อย่างชัดเจนจึงจะถูกเรียกใช้งาน
+    ห้ามใช้ผลลัพธ์หรือ transaction_id จากคลาสนี้เป็นหลักฐานการชำระเงินจริง
     """
     @staticmethod
     def charge(student, amount):

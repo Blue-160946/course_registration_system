@@ -74,10 +74,15 @@
                                 </span>
                             </td>
                             <td>
-                                <span class="badge bg-light text-dark me-2">
-                                    {{ section.get_day_display }}
-                                </span>
-                                {{ section.start_time|time:"H:i" }} - {{ section.end_time|time:"H:i" }}
+                                {% for class_time in section.class_times.all %}
+                                    <span class="badge bg-light text-dark me-2">
+                                        {{ class_time.get_day_display }}
+                                    </span>
+                                    {{ class_time.start_time|time:"H:i" }} - {{ class_time.end_time|time:"H:i" }}
+                                    {% if not forloop.last %}<br>{% endif %}
+                                {% empty %}
+                                    - ไม่มีตารางเวลา
+                                {% endfor %}
                             </td>
                         </tr>
                         {% endfor %}
@@ -95,6 +100,46 @@
             <a href="{% url 'users:student-list' %}" class="btn btn-outline-orange">
                 <i class="bi bi-arrow-left me-1"></i> กลับไปหน้ารายการ
             </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mt-4" style="border-top: 3px solid #fd7e14;">
+        <div class="card-header bg-orange-light">
+            <h3 class="mb-0 text-orange">
+                <i class="bi bi-receipt me-2"></i>ประวัติการชำระเงิน
+            </h3>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">วันที่</th>
+                            <th>รายวิชา</th>
+                            <th>จำนวนเงิน</th>
+                            <th>สถานะ</th>
+                            <th>รหัสธุรกรรม</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                            <tr>
+                                <td class="ps-4">{{ payment.created_at|date:"d/m/Y H:i" }}</td>
+                                <td>{{ payment.course.code }} — {{ payment.course.name }}</td>
+                                <td>{{ payment.amount|floatformat:2 }} บาท</td>
+                                <td>
+                                    <span class="badge {% if payment.status == 'SUCCESS' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ payment.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ payment.transaction_id|default:"-" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr><td colspan="5" class="text-center py-4 text-muted">ยังไม่มีประวัติการชำระเงิน</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>

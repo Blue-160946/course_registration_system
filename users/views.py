@@ -3,7 +3,7 @@ from django.contrib.auth import authenticate, login
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from courses.views import staff_required
+from courses.views import staff_required, student_required
 from .models import User
 
 def staff_login_view(request):
@@ -57,4 +57,15 @@ def student_list(request):
 def student_detail(request, pk):
     """แสดงรายละเอียดของนิสิต 1 คน"""
     student = get_object_or_404(User, pk=pk, profile__user_type='STUDENT')
-    return render(request, 'users/student_detail.html', {'student': student})
+    payments = student.profile.payments.select_related('course').order_by('-created_at')
+    return render(request, 'users/student_detail.html', {
+        'student': student,
+        'payments': payments,
+    })
+
+
+@login_required
+@student_required
+def payment_history(request):
+    payments = request.user.profile.payments.select_related('course').order_by('-created_at')
+    return render(request, 'users/payment_history.html', {'payments': payments})

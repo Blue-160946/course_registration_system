@@ -89,6 +89,9 @@ class Branch(models.Model):
     
 class Semester(models.Model):
     """เก็บข้อมูลปีการศึกษาและภาคเรียน"""
+    MIN_REGULAR_SEMESTER_DAYS = 90
+    MIN_SUMMER_SEMESTER_DAYS = 30
+
     SEMESTER_CHOICES = [
         (1, 'ภาคเรียนที่ 1'),
         (2, 'ภาคเรียนที่ 2'),
@@ -132,10 +135,24 @@ class Semester(models.Model):
             if self.end_date < self.start_date:
                 raise ValidationError({'end_date': 'วันสิ้นสุดภาคเรียนต้องอยู่หลังวันเปิดภาคเรียน'})
                 
-            # ตรวจสอบระยะเวลาภาคเรียน
+            # ภาคฤดูร้อนมีระยะเวลาสั้นกว่าภาคเรียนปกติ
             semester_duration = (self.end_date - self.start_date).days
-            if semester_duration < 180:
-                raise ValidationError('ระยะเวลาภาคเรียนต้องไม่น้อยกว่า 180 วัน')
+            minimum_duration = (
+                self.MIN_SUMMER_SEMESTER_DAYS
+                if self.semester == 3
+                else self.MIN_REGULAR_SEMESTER_DAYS
+            )
+            if semester_duration < minimum_duration:
+                raise ValidationError(
+                    f'ระยะเวลาภาคเรียนต้องไม่น้อยกว่า {minimum_duration} วัน'
+                )
+
+            overlapping_semesters = Semester.objects.filter(
+                start_date__lte=self.end_date,
+                end_date__gte=self.start_date,
+            ).exclude(pk=self.pk)
+            if overlapping_semesters.exists():
+                raise ValidationError('ช่วงวันของภาคเรียนซ้อนทับกับภาคเรียนที่มีอยู่แล้ว')
             
     def __str__(self):
         return f"ปีการศึกษา {self.year} - {self.get_semester_display()}"
@@ -384,34 +401,35 @@ class ClassTime(models.Model):
             if duration > 2:
                 raise ValidationError('ระยะเวลาเรียนต้องไม่เกิน 2 ชั่วโมงต่อคาบ')
 
-            # ตรวจสอบการซ้ำซ้อนของเวลาเรียนในวันเดียวกัน
+            # ตรวจสอบการใช้ Section/ห้อง/อาจารย์ร่วมกันในช่วงเวลาเดียวกัน
             if self.section_id:  # ตรวจสอบเฉพาะเมื่อมี section แล้ว
-                overlapping_times = ClassTime.objects.filter(
+                possible_conflicts = ClassTime.objects.filter(
                     section__semester=self.section.semester,
                     day=self.day
                 ).exclude(id=self.id)  # ไม่นับตัวเอง
 
-                for time in overlapping_times:
-                    if (
-                        (self.start_time <= time.start_time <= self.end_time) or
-                        (self.start_time <= time.end_time <= self.end_time) or
-                        (time.start_time <= self.start_time and time.end_time >= self.end_time)
-                    ):
-                        # ตรวจสอบว่ามีการใช้ห้องซ้ำกันหรือไม่
-                        if self.section.room and self.section.room == time.section.room:
-                            raise ValidationError(
-                                f'ห้อง {self.section.room} ถูกใช้งานในช่วงเวลานี้แล้ว ' +
-                                f'โดยวิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
-                            )
+                instructor_ids = set(self.section.instructors.values_list('id', flat=True))
 
-                        # ตรวจสอบว่าอาจารย์สอนซ้ำซ้อนหรือไม่
-                        if any(instructor in time.section.instructors.all() 
-                              for instructor in self.section.instructors.all()):
-                            raise ValidationError(
-                                'มีอาจารย์ในกลุ่มเรียนนี้มีตารางสอนซ้ำซ้อนกับ ' +
-                                f'วิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
-                            )
+                for time in possible_conflicts:
+                    if self.start_time > time.end_time or self.end_time < time.start_time:
+                        continue
+
+                    if time.section_id == self.section_id:
+                        raise ValidationError('คาบเรียนในกลุ่มเรียนเดียวกันมีเวลาชนกัน')
+
+                    if self.section.room_id and self.section.room_id == time.section.room_id:
+                        raise ValidationError(
+                            f'ห้อง {self.section.room} ถูกใช้งานในช่วงเวลานี้แล้ว ' +
+                            f'โดยวิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
+                        )
+
+                    if instructor_ids.intersection(
+                        time.section.instructors.values_list('id', flat=True)
+                    ):
+                        raise ValidationError(
+                            'มีอาจารย์ในกลุ่มเรียนนี้มีตารางสอนซ้ำซ้อนกับ ' +
+                            f'วิชา {time.section.course.code} กลุ่ม {time.section.section_number}'
+                        )
 
     def __str__(self):
         return f"{self.section.course.code} Sec {self.section.section_number} ({self.get_day_display()} {self.start_time})"
-    

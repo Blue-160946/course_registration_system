@@ -1,0 +1,25 @@
+{% extends 'core/base.html' %}
+
+{% block title %}{% if object %}แก้ไข{% else %}เพิ่ม{% endif %}{{ label }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-orange-gradient text-white">
+        <h1 class="h4 mb-0">{% if object %}แก้ไข{% else %}เพิ่ม{% endif %}{{ label }}</h1>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          {% csrf_token %}
+          {{ form.as_p }}
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-orange">บันทึก</button>
+            <a href="{% url 'courses:master-data-list' kind %}" class="btn btn-outline-secondary">ยกเลิก</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

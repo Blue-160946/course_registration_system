@@ -120,13 +120,21 @@
                                     <i class="bi bi-people me-2"></i>ดูข้อมูลนิสิต
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'courses:master-data-index' %}">
+                                    <i class="bi bi-database-gear me-2"></i>ข้อมูลตั้งต้น
+                                </a>
+                            </li>
                         {% endif %}
-                        {% if user.is_authenticated and not user.is_staff %}
+                        {% if user.is_authenticated and not user.is_staff and user.profile.user_type == 'STUDENT' %}
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'courses:public-section-list' %}">ลงทะเบียนเรียน</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" href="{% url 'courses:my-schedule' %}">ตารางเรียนของฉัน</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" href="{% url 'users:payment-history' %}">ประวัติการชำระเงิน</a>
                             </li>
                         {% endif %}
                     </li>

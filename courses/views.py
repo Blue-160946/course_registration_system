@@ -1,12 +1,36 @@
+from functools import wraps
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.views.decorators.http import require_POST
 from django.core.exceptions import PermissionDenied
+from django.http import Http404
+from django.db.models.deletion import ProtectedError
 from django.contrib import messages
 from django.utils import timezone
+from django.db import transaction
 from django.db.models import Q
-from .models import Course, Section, Semester, ClassTime
-from .forms import CourseForm, SectionForm, ClassTimeForm
+from .models import (
+    Branch,
+    ClassTime,
+    Course,
+    Department,
+    Faculty,
+    Room,
+    Section,
+    Semester,
+)
+from .forms import (
+    BranchForm,
+    ClassTimeForm,
+    CourseForm,
+    DepartmentForm,
+    FacultyForm,
+    RoomForm,
+    SectionForm,
+    SemesterForm,
+)
 from payment.models import PaymentTransaction
 from payment.payment_gateway import FakePaymentGateway
 from django.http import HttpResponse
@@ -15,11 +39,144 @@ from xhtml2pdf import pisa
 
 # เช็คว่าผู้ใช้เป็น staff ก่อนเข้าถึง view
 def staff_required(view_func):
+    @wraps(view_func)
     def _wrapped_view_func(request, *args, **kwargs):
         if not request.user.is_staff:
             raise PermissionDenied
         return view_func(request, *args, **kwargs)
     return _wrapped_view_func
+
+
+def student_required(view_func):
+    """Allow access only to authenticated users with a student profile."""
+    @wraps(view_func)
+    def _wrapped_view_func(request, *args, **kwargs):
+        profile = getattr(request.user, 'profile', None)
+        if profile is None or profile.user_type != 'STUDENT':
+            raise PermissionDenied
+        return view_func(request, *args, **kwargs)
+    return _wrapped_view_func
+
+
+def get_current_semester():
+    current_date = timezone.now().date()
+    return Semester.objects.filter(
+        start_date__lte=current_date,
+        end_date__gte=current_date,
+    ).order_by('start_date', 'pk').first()
+
+
+MASTER_DATA_CONFIG = {
+    'faculties': {
+        'model': Faculty,
+        'form_class': FacultyForm,
+        'label': 'คณะ',
+        'order_by': ('name',),
+    },
+    'departments': {
+        'model': Department,
+        'form_class': DepartmentForm,
+        'label': 'ภาควิชา',
+        'order_by': ('faculty__name', 'name'),
+    },
+    'branches': {
+        'model': Branch,
+        'form_class': BranchForm,
+        'label': 'สาขาวิชา',
+        'order_by': ('department__name', 'name'),
+    },
+    'rooms': {
+        'model': Room,
+        'form_class': RoomForm,
+        'label': 'ห้องเรียน',
+        'order_by': ('building', 'room_number'),
+    },
+    'semesters': {
+        'model': Semester,
+        'form_class': SemesterForm,
+        'label': 'ภาคเรียน',
+        'order_by': ('-year', 'semester'),
+    },
+}
+
+
+def get_master_data_config(kind):
+    try:
+        return MASTER_DATA_CONFIG[kind]
+    except KeyError as exc:
+        raise Http404("ไม่พบประเภทข้อมูลตั้งต้น") from exc
+
+
+@login_required
+@staff_required
+def master_data_index(request):
+    items = [
+        {
+            'kind': kind,
+            'label': config['label'],
+            'count': config['model'].objects.count(),
+        }
+        for kind, config in MASTER_DATA_CONFIG.items()
+    ]
+    return render(request, 'courses/master_data_index.html', {'items': items})
+
+
+@login_required
+@staff_required
+def master_data_list(request, kind):
+    config = get_master_data_config(kind)
+    objects = config['model'].objects.all().order_by(*config['order_by'])
+    return render(request, 'courses/master_data_list.html', {
+        'kind': kind,
+        'label': config['label'],
+        'objects': objects,
+    })
+
+
+@login_required
+@staff_required
+def master_data_form(request, kind, pk=None):
+    config = get_master_data_config(kind)
+    instance = None
+    if pk is not None:
+        instance = get_object_or_404(config['model'], pk=pk)
+
+    form = config['form_class'](request.POST or None, instance=instance)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        messages.success(request, f"บันทึก{config['label']}เรียบร้อยแล้ว")
+        return redirect('courses:master-data-list', kind=kind)
+
+    return render(request, 'courses/master_data_form.html', {
+        'form': form,
+        'kind': kind,
+        'label': config['label'],
+        'object': instance,
+    })
+
+
+@login_required
+@staff_required
+def master_data_delete(request, kind, pk):
+    config = get_master_data_config(kind)
+    instance = get_object_or_404(config['model'], pk=pk)
+
+    if request.method == 'POST':
+        try:
+            instance.delete()
+            messages.success(request, f"ลบ{config['label']}เรียบร้อยแล้ว")
+        except ProtectedError:
+            messages.error(
+                request,
+                f"ไม่สามารถลบ{config['label']}นี้ได้ เนื่องจากยังมีข้อมูลอื่นอ้างอิงอยู่"
+            )
+        return redirect('courses:master-data-list', kind=kind)
+
+    return render(request, 'courses/master_data_confirm_delete.html', {
+        'kind': kind,
+        'label': config['label'],
+        'object': instance,
+    })
 
 @login_required
 @staff_required
@@ -141,10 +298,10 @@ def section_delete(request, pk):
     return render(request, 'courses/section_confirm_delete.html', {'object': section})
 
 @login_required
+@student_required
 def public_section_list(request):
     """หน้าสำหรับให้นิสิตดู Section ที่เปิดลงทะเบียน พร้อมฟังก์ชันค้นหา"""
-    current_date = timezone.now().date()
-    current_semester = Semester.objects.filter(start_date__lte=current_date, end_date__gte=current_date).first() # ดึงภาคเรียนปัจจุบัน
+    current_semester = get_current_semester()
 
     
     sections_queryset = Section.objects.none() 
@@ -177,45 +334,70 @@ def public_section_list(request):
     return render(request, 'courses/public_section_list.html', context)
 
 @login_required
+@student_required
 @require_POST # บังคับให้ view นี้รับเฉพาะ POST request เพื่อความปลอดภัย
 def enroll_section(request, section_pk):
-    section = get_object_or_404(Section, pk=section_pk)
     student = request.user
     profile = student.profile
-    course_to_enroll = section.course
 
-    # ตรวจสอบว่าลงทะเบียนไปแล้วหรือยัง
-    if student.enrolled_sections.filter(course=course_to_enroll).exists():
-        messages.warning(request, f"คุณได้ลงทะเบียนวิชา {course_to_enroll.name} ไปแล้ว")
-        return redirect('courses:public-section-list')
+    # Lock the section row so concurrent requests cannot exceed its capacity.
+    with transaction.atomic():
+        section = get_object_or_404(
+            Section.objects.select_for_update().select_related('course', 'semester'),
+            pk=section_pk,
+        )
+        course_to_enroll = section.course
+        current_semester = get_current_semester()
 
-    if student in section.students.all():
-        messages.warning(request, f"คุณได้ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) ไปแล้ว")
-        return redirect('courses:public-section-list')
+        if current_semester is None or section.semester_id != current_semester.pk:
+            messages.error(request, "กลุ่มเรียนนี้ไม่ได้เปิดลงทะเบียนในภาคเรียนปัจจุบัน")
+            return redirect('courses:public-section-list')
 
-    # if course_to_enroll.fee > 0:
-        
-    if course_to_enroll.fee > 0:
-        result = FakePaymentGateway.charge(student, course_to_enroll.fee)
-        if not result["success"]:
+        if not course_to_enroll.is_active:
+            messages.error(request, f"รายวิชา {course_to_enroll.name} ไม่ได้เปิดให้ลงทะเบียน")
+            return redirect('courses:public-section-list')
+
+        if section.students.count() >= section.capacity:
+            messages.error(request, f"รายวิชา {course_to_enroll.name} (Sec {section.section_number}) เต็มแล้ว")
+            return redirect('courses:public-section-list')
+
+        # ตรวจสอบว่าลงทะเบียนไปแล้วหรือยัง
+        if student.enrolled_sections.filter(
+            course=course_to_enroll,
+            semester=section.semester,
+        ).exists():
+            messages.warning(request, f"คุณได้ลงทะเบียนวิชา {course_to_enroll.name} ไปแล้ว")
+            return redirect('courses:public-section-list')
+
+        if course_to_enroll.fee > 0:
+            if settings.PAYMENT_GATEWAY_MODE != 'fake':
+                messages.error(
+                    request,
+                    "ระบบชำระเงินจริงยังไม่ได้เชื่อมต่อ จึงไม่สามารถลงทะเบียนวิชาที่มีค่าธรรมเนียมได้"
+                )
+                return redirect('courses:public-section-list')
+
+            result = FakePaymentGateway.charge(student, course_to_enroll.fee)
+            if not result["success"]:
+                PaymentTransaction.objects.create(
+                    student=profile,
+                    course=course_to_enroll,
+                    amount=course_to_enroll.fee,
+                    status="FAILED"
+                )
+                messages.error(request, f"การชำระเงินสำหรับวิชา {course_to_enroll.name} ล้มเหลว")
+                return redirect('courses:public-section-list')
+
             PaymentTransaction.objects.create(
                 student=profile,
                 course=course_to_enroll,
                 amount=course_to_enroll.fee,
-                status="FAILED"
+                status="SUCCESS",
+                transaction_id=result["transaction_id"]
             )
-            messages.error(request, f"การชำระเงินสำหรับวิชา {course_to_enroll.name} ล้มเหลว")
-            return redirect('courses:public-section-list')
 
-        PaymentTransaction.objects.create(
-            student=profile,
-            course=course_to_enroll,
-            amount=course_to_enroll.fee,
-            status="SUCCESS",
-            transaction_id=result["transaction_id"]
-        )
-    
-    section.students.add(student)
+        section.students.add(student)
+
     messages.success(request, f"ลงทะเบียนวิชา {section.course.name} (Sec {section.section_number}) สำเร็จ!")
     return redirect('courses:public-section-list')
 
@@ -305,10 +487,10 @@ def time_delete(request, pk):
     return render(request, 'courses/time_confirm_delete.html', context)
 
 @login_required
+@student_required
 def my_schedule(request):
     """หน้าสำหรับดูตารางเรียนของฉัน"""
-    current_date = timezone.now().date()
-    current_semester = Semester.objects.filter(start_date__lte=current_date, end_date__gte=current_date).first() # ดึงภาคเรียนปัจจุบัน
+    current_semester = get_current_semester()
     
     enrolled_sections = []
     if current_semester:
@@ -321,13 +503,10 @@ def my_schedule(request):
     return render(request, 'courses/my_schedule.html', context)
 
 @login_required
+@student_required
 def my_schedule_pdf(request):
     user = request.user
-    current_date = timezone.now().date()
-    current_semester = Semester.objects.filter(
-        start_date__lte=current_date,
-        end_date__gte=current_date
-    ).first()
+    current_semester = get_current_semester()
 
     enrolled_sections = []
     if current_semester:

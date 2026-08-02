@@ -109,6 +109,7 @@ assets/style.css
 .env.test.local
 .env.production.local
 .env.*
+!.env.example
 config.local.js
 config.dev.js
 config.prod.js

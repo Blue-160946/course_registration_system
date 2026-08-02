@@ -277,3 +277,42 @@ def test_TC_087_same_room_time_different_semester_ok(client, staff_user, course,
     assert ClassTime.objects.filter(
         section=s2, day="MON", start_time=time(9, 0), end_time=time(11, 0)
     ).exists()
+
+
+@pytest.mark.django_db
+def test_same_time_different_room_and_instructor_ok(
+    client, staff_user, course, semester, room_a, room_b, instructor_user
+):
+    _login_staff(client, staff_user)
+
+    other_instructor = User.objects.create_user(username="instructor2", password="pass123")
+    Profile.objects.create(user=other_instructor, user_type="INSTRUCTOR")
+
+    s1 = Section.objects.create(
+        course=course,
+        semester=semester,
+        room=room_a,
+        section_number="1",
+        capacity=30,
+    )
+    s1.instructors.add(instructor_user)
+    ClassTime.objects.create(section=s1, day="MON", start_time="09:00", end_time="11:00")
+
+    s2 = Section.objects.create(
+        course=course,
+        semester=semester,
+        room=room_b,
+        section_number="2",
+        capacity=30,
+    )
+    s2.instructors.add(other_instructor)
+
+    response = client.post(_url_ct_add(s2), _payload_add("MON", "09:00", "11:00"))
+
+    assert response.status_code in (302, 303)
+    assert ClassTime.objects.filter(
+        section=s2,
+        day="MON",
+        start_time=time(9, 0),
+        end_time=time(11, 0),
+    ).exists()

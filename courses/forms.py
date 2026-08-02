@@ -2,7 +2,65 @@ from datetime import date, datetime
 from django import forms
 from django.forms import BaseInlineFormSet, ValidationError, inlineformset_factory
 from django.contrib.auth.models import User
-from .models import Course, Section, ClassTime, Room
+from .models import (
+    Branch,
+    ClassTime,
+    Course,
+    Department,
+    Faculty,
+    Room,
+    Section,
+    Semester,
+)
+
+
+class MasterDataModelForm(forms.ModelForm):
+    """Shared Bootstrap styling for staff-managed master data forms."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            if isinstance(field.widget, forms.CheckboxInput):
+                css_class = 'form-check-input'
+            elif isinstance(field.widget, forms.Select):
+                css_class = 'form-select'
+            else:
+                css_class = 'form-control'
+            field.widget.attrs.update({'class': css_class})
+
+
+class FacultyForm(MasterDataModelForm):
+    class Meta:
+        model = Faculty
+        fields = ['name']
+
+
+class DepartmentForm(MasterDataModelForm):
+    class Meta:
+        model = Department
+        fields = ['name', 'faculty']
+
+
+class BranchForm(MasterDataModelForm):
+    class Meta:
+        model = Branch
+        fields = ['name', 'department']
+
+
+class RoomForm(MasterDataModelForm):
+    class Meta:
+        model = Room
+        fields = ['building', 'room_number']
+
+
+class SemesterForm(MasterDataModelForm):
+    class Meta:
+        model = Semester
+        fields = ['year', 'semester', 'start_date', 'end_date']
+        widgets = {
+            'start_date': forms.DateInput(attrs={'type': 'date'}),
+            'end_date': forms.DateInput(attrs={'type': 'date'}),
+        }
 
 # Form Field สำหรับเลือกอาจารย์
 class InstructorChoiceField(forms.ModelMultipleChoiceField):
@@ -238,38 +296,53 @@ class ClassTimeForm(forms.ModelForm):
         if duration > 2:
             errors['__all__'] = errors.get('__all__', []) + ['ระยะเวลาเรียนต้องไม่เกิน 2 ชั่วโมงต่อคาบ']
 
-        # 3. ตรวจสอบเวลาซ้อนทับกันใน Section/Room/Instructor
-        overlapping_times = ClassTime.objects.filter(
+        # 3. ตรวจสอบเวลาชนกันเฉพาะเมื่อใช้ Section/Room/Instructor ร่วมกัน
+        possible_conflicts = ClassTime.objects.filter(
             section__semester=self.section.semester,
             day=day
         ).exclude(id=self.instance.id if self.instance else None)
 
-        for time in overlapping_times:
+        instructor_ids = set(self.section.instructors.values_list('id', flat=True))
+
+        for time in possible_conflicts:
             start_existing = time.start_time
             end_existing = time.end_time
 
-            # ตรวจสอบเวลาซ้อนทับจริง
-            if start_time < end_existing and end_time > start_existing:
-                errors['__all__'] = errors.get('__all__', []) + [
-                    f'เวลาซ้อนทับกัน: {start_time}-{end_time} ทับกับ '
-                    f'{start_existing}-{end_existing} ของวิชา {time.section.course.name} '
-                    f'กลุ่ม {time.section.section_number}'
-                ]
-            # ตรวจสอบเวลาชนขอบพอดี
-            elif start_time == end_existing or end_time == start_existing:
-                errors['__all__'] = errors.get('__all__', []) + [
-                    f'เวลาชนขอบกัน: {start_time}-{end_time} ติดกับ '
-                    f'{start_existing}-{end_existing} ของวิชา {time.section.course.name} '
-                    f'กลุ่ม {time.section.section_number}'
-                ]
+            # รักษากติกาเดิม: คาบที่ชนขอบกันถือว่าใช้ทรัพยากรชนกันด้วย
+            if start_time > end_existing or end_time < start_existing:
+                continue
 
-            # ตรวจสอบการชนของอาจารย์
-            overlapping_instructors = [
-                instr for instr in self.section.instructors.all()
-                if instr in time.section.instructors.all()
-            ]
-            if overlapping_instructors:
-                names = ", ".join([instr.get_full_name() or instr.username for instr in overlapping_instructors])
+            if time.section_id == self.section.id:
+                if start_time == end_existing or end_time == start_existing:
+                    errors['__all__'] = errors.get('__all__', []) + [
+                        f'เวลาชนขอบกัน: คาบเรียน {start_time}-{end_time} ติดกับคาบ '
+                        f'{start_existing}-{end_existing} ในกลุ่มเรียนเดียวกัน'
+                    ]
+                    continue
+
+                errors['__all__'] = errors.get('__all__', []) + [
+                    f'คาบเรียน {start_time}-{end_time} ชนกับคาบ {start_existing}-{end_existing} '
+                    f'ในกลุ่มเรียนเดียวกัน'
+                ]
+                continue
+
+            if self.section.room_id and self.section.room_id == time.section.room_id:
+                errors['__all__'] = errors.get('__all__', []) + [
+                    f'เวลาซ้อนทับกัน: ห้อง {self.section.room} ทับกับวิชา '
+                    f'{time.section.course.name} กลุ่ม {time.section.section_number} '
+                    f'ช่วงเวลา {start_existing}-{end_existing}'
+                ]
+                continue
+
+            conflicting_ids = instructor_ids.intersection(
+                time.section.instructors.values_list('id', flat=True)
+            )
+            if conflicting_ids:
+                conflicting_instructors = self.section.instructors.filter(id__in=conflicting_ids)
+                names = ", ".join(
+                    instructor.get_full_name() or instructor.username
+                    for instructor in conflicting_instructors
+                )
                 errors['__all__'] = errors.get('__all__', []) + [
                     f'อาจารย์ ({names}) มีตารางสอนชนกันกับวิชา {time.section.course.name} '
                     f'กลุ่ม {time.section.section_number} ช่วงเวลา {start_existing}-{end_existing}'

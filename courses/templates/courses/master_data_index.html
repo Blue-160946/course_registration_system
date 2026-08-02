@@ -1,0 +1,25 @@
+{% extends 'core/base.html' %}
+
+{% block title %}ข้อมูลตั้งต้น{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h1 class="h2 text-orange">จัดการข้อมูลตั้งต้น</h1>
+  <a href="{% url 'courses:course-list' %}" class="btn btn-outline-secondary">กลับไปรายวิชา</a>
+</div>
+
+<div class="row g-3">
+  {% for item in items %}
+    <div class="col-md-6 col-lg-4">
+      <a href="{% url 'courses:master-data-list' item.kind %}" class="text-decoration-none">
+        <div class="card h-100 shadow-sm border-0">
+          <div class="card-body">
+            <h2 class="h5 text-dark">{{ item.label }}</h2>
+            <p class="display-6 text-orange mb-0">{{ item.count }}</p>
+          </div>
+        </div>
+      </a>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
